@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -82,11 +83,14 @@ fun AppointmentCard(
 
             Spacer(Modifier.height(10.dp))
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                InfoChip(label = "Data", value = formatDateTime(appointment.dateEpochMs),
+            Row(
+                modifier = Modifier.height(IntrinsicSize.Max),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                AppointmentInfoChip(epochMs = appointment.dateEpochMs,
                     valueColor = urgencyColor, modifier = Modifier.weight(1f))
                 InfoChip(label = "Manca", value = timeLabel,
-                    valueColor = urgencyColor, modifier = Modifier.weight(1f))
+                    valueColor = urgencyColor, modifier = Modifier.weight(1f).fillMaxHeight())
             }
 
             if (!appointment.notes.isNullOrBlank()) {
@@ -183,12 +187,15 @@ fun AppointmentDoneCard(
 
             Spacer(Modifier.height(8.dp))
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                InfoChip(label = "Data", value = formatDateTime(appointment.dateEpochMs),
-                    valueColor = AccentAmberLight, modifier = Modifier.weight(1f))
+            Row(
+                modifier = Modifier.height(IntrinsicSize.Max),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                AppointmentInfoChip(epochMs = appointment.dateEpochMs,
+                    modifier = Modifier.weight(1f))
                 appointment.amountCents?.let { cents ->
                     InfoChip(label = "Importo", value = "€${"%.2f".format(cents / 100.0)}",
-                        valueColor = AccentGreen, modifier = Modifier.weight(1f))
+                        valueColor = AccentGreen, modifier = Modifier.weight(1f).fillMaxHeight())
                 }
             }
 

@@ -54,6 +54,13 @@ fun formatDate(epochMs: Long): String =
 fun formatDateTime(epochMs: Long): String =
     SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.ITALY).format(Date(epochMs))
 
+// Data e ora separate — usato negli AppointmentInfoChip
+fun formatDateOnly(epochMs: Long): String =
+    SimpleDateFormat("dd/MM/yyyy", Locale.ITALY).format(Date(epochMs))
+
+fun formatTimeOnly(epochMs: Long): String =
+    SimpleDateFormat("HH:mm", Locale.ITALY).format(Date(epochMs))
+
 // ── Recurrence ────────────────────────────────────────────────────────────────
 fun recurrenceLabel(value: String): String = when (value) {
     com.example.rimembranze.data.Recurrence.NONE       -> "Nessuna"
@@ -224,6 +231,31 @@ fun InfoChip(
         Text(label, color = TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Medium)
         Spacer(Modifier.height(2.dp))
         Text(value, color = valueColor, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+// ── AppointmentInfoChip ───────────────────────────────────────────────────────
+// Chip con data su riga 1 e ora su riga 2 — altezza uniforme tramite fillMaxHeight
+@Composable
+fun AppointmentInfoChip(
+    epochMs: Long,
+    valueColor: Color = AccentAmberLight,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(SurfaceElevated)
+            .fillMaxHeight()
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text("Data", color = TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+        Spacer(Modifier.height(2.dp))
+        Text(formatDateOnly(epochMs), color = valueColor,
+            fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        Text(formatTimeOnly(epochMs), color = valueColor,
+            fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 
