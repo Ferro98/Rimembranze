@@ -1,6 +1,7 @@
 package com.example.rimembranze.ui.components
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -47,6 +48,17 @@ fun AppointmentCard(
         daysLeft <= 3  -> AccentAmber
         else           -> AccentBlue
     }
+    val isUrgent = msLeft in 0..(24 * 60 * 60 * 1000L)
+
+    // Pulse solo per appuntamenti urgenti (< 24h)
+    val dotAlpha by animateFloatAsState(
+        targetValue = if (isUrgent) 0.3f else 1f,
+        animationSpec = if (isUrgent) infiniteRepeatable(
+            animation = tween(700, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ) else snap(),
+        label = "dot_pulse"
+    )
 
     Card(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
@@ -56,7 +68,8 @@ fun AppointmentCard(
     ) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(urgencyColor))
+                Box(modifier = Modifier.size(8.dp).clip(CircleShape)
+                    .background(urgencyColor.copy(alpha = dotAlpha)))
                 Spacer(Modifier.width(10.dp))
                 Text(appointment.title, color = TextPrimary, fontWeight = FontWeight.SemiBold,
                     fontSize = 16.sp, modifier = Modifier.weight(1f))
@@ -134,7 +147,7 @@ fun AppointmentCard(
 fun AppointmentDoneCard(
     appointment: AppointmentEntity,
     showPaidBadge: Boolean = false,
-    onDelete: (() -> Unit)? = null   // null = nessun bottone delete
+    onDelete: (() -> Unit)? = null
 ) {
     var deleteConfirm by remember { mutableStateOf(false) }
 
@@ -145,8 +158,6 @@ fun AppointmentDoneCard(
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(Modifier.padding(16.dp)) {
-
-            // ── Header ───────────────────────────────────────────────────────
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(modifier = Modifier.size(8.dp).clip(CircleShape)
                     .background(if (showPaidBadge) AccentGreen else AccentBlue))
@@ -157,8 +168,7 @@ fun AppointmentDoneCard(
                     Box(modifier = Modifier.clip(RoundedCornerShape(6.dp))
                         .background(AccentGreen.copy(alpha = 0.15f))
                         .padding(horizontal = 8.dp, vertical = 3.dp)) {
-                        Text("Fatturata", color = AccentGreen, fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold)
+                        Text("Fatturata", color = AccentGreen, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                     }
                     Spacer(Modifier.width(4.dp))
                 }
@@ -171,8 +181,8 @@ fun AppointmentDoneCard(
                 }
             }
 
-            // ── Chips ────────────────────────────────────────────────────────
             Spacer(Modifier.height(8.dp))
+
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 InfoChip(label = "Data", value = formatDateTime(appointment.dateEpochMs),
                     valueColor = AccentAmberLight, modifier = Modifier.weight(1f))
@@ -182,7 +192,6 @@ fun AppointmentDoneCard(
                 }
             }
 
-            // ── Note ─────────────────────────────────────────────────────────
             if (!appointment.notes.isNullOrBlank()) {
                 Spacer(Modifier.height(8.dp))
                 Box(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
@@ -191,7 +200,6 @@ fun AppointmentDoneCard(
                 }
             }
 
-            // ── Conferma eliminazione ─────────────────────────────────────────
             if (onDelete != null && deleteConfirm) {
                 Spacer(Modifier.height(12.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

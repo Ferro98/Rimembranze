@@ -1,5 +1,6 @@
 package com.example.rimembranze.ui.components
 
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -7,10 +8,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -158,13 +160,51 @@ fun SectionHeader(title: String, count: Int, accentColor: Color = AccentAmber) {
     HorizontalDivider(color = DividerColor, thickness = 0.5.dp)
 }
 
-// ── EmptyState ────────────────────────────────────────────────────────────────
+// ── EmptyState animata ────────────────────────────────────────────────────────
 @Composable
-fun EmptyState(message: String) {
+fun EmptyState(message: String, icon: String = "○") {
+    // Scala in con bounce all'ingresso
+    val scale by animateFloatAsState(
+        targetValue = 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness    = Spring.StiffnessMediumLow
+        ),
+        label = "empty_scale"
+    )
+    // Respiro lento continuo sull'icona
+    val breathAlpha by animateFloatAsState(
+        targetValue = 0.4f,
+        animationSpec = infiniteRepeatable(
+            animation  = tween(1800, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "empty_breath"
+    )
+
     Box(
-        modifier = Modifier.fillMaxWidth().padding(28.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 36.dp, horizontal = 28.dp)
+            .scale(scale),
         contentAlignment = Alignment.Center
-    ) { Text(message, color = TextSecondary, fontSize = 14.sp) }
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(
+                text  = icon,
+                color = TextSecondary.copy(alpha = breathAlpha),
+                fontSize = 36.sp
+            )
+            Text(
+                text  = message,
+                color = TextSecondary,
+                fontSize = 14.sp
+            )
+        }
+    }
 }
 
 // ── InfoChip ──────────────────────────────────────────────────────────────────

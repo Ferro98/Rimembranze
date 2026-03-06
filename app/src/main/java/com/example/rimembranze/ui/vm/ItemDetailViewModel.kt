@@ -9,10 +9,7 @@ import com.example.rimembranze.data.db.DeadlineEntity
 import com.example.rimembranze.data.db.ItemEntity
 import com.example.rimembranze.data.db.RecordEntity
 import com.example.rimembranze.data.db.RecordType
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
@@ -21,14 +18,18 @@ data class ItemDetailUiState(
     val item: ItemEntity? = null,
     val deadlines: List<DeadlineEntity> = emptyList(),
     val records: List<RecordEntity> = emptyList(),
-    val appointmentsPending: List<AppointmentEntity> = emptyList(),      // futuri
-    val appointmentsDoneNotPaid: List<AppointmentEntity> = emptyList(),  // da fatturare
-    val appointmentsPaid: List<AppointmentEntity> = emptyList()          // storico
+    val appointmentsPending: List<AppointmentEntity> = emptyList(),
+    val appointmentsDoneNotPaid: List<AppointmentEntity> = emptyList(),
+    val appointmentsPaid: List<AppointmentEntity> = emptyList(),
+    val appointmentsAscending: Boolean = true   // toggle ordinamento
 )
 
 class ItemDetailViewModel(app: Application) : AndroidViewModel(app) {
 
     private val db = AppDatabase.get(app)
+
+    // Toggle ordinamento appuntamenti — persiste per tutta la sessione
+    private val _appointmentsAscending = MutableStateFlow(true)
 
     fun observe(itemId: Long): StateFlow<ItemDetailUiState> {
         return combine(
@@ -37,23 +38,34 @@ class ItemDetailViewModel(app: Application) : AndroidViewModel(app) {
             db.recordDao().observeByItem(itemId),
             db.appointmentDao().observePending(itemId),
             db.appointmentDao().observeDoneNotPaid(itemId),
-            db.appointmentDao().observePaid(itemId)
+            db.appointmentDao().observePaid(itemId),
+            _appointmentsAscending
         ) { values ->
             @Suppress("UNCHECKED_CAST")
+            val pending     = values[3] as List<AppointmentEntity>
+            val doneNotPaid = values[4] as List<AppointmentEntity>
+            val paid        = values[5] as List<AppointmentEntity>
+            val asc         = values[6] as Boolean
+
             ItemDetailUiState(
                 isLoading               = false,
                 item                    = values[0] as? ItemEntity,
                 deadlines               = values[1] as List<DeadlineEntity>,
                 records                 = values[2] as List<RecordEntity>,
-                appointmentsPending     = values[3] as List<AppointmentEntity>,
-                appointmentsDoneNotPaid = values[4] as List<AppointmentEntity>,
-                appointmentsPaid        = values[5] as List<AppointmentEntity>
+                appointmentsPending     = if (asc) pending else pending.reversed(),
+                appointmentsDoneNotPaid = if (asc) doneNotPaid else doneNotPaid.reversed(),
+                appointmentsPaid        = if (asc) paid else paid.reversed(),
+                appointmentsAscending   = asc
             )
         }.stateIn(
             scope        = viewModelScope,
             started      = SharingStarted.WhileSubscribed(5_000),
             initialValue = ItemDetailUiState(isLoading = true)
         )
+    }
+
+    fun toggleAppointmentsOrder() {
+        _appointmentsAscending.value = !_appointmentsAscending.value
     }
 
     // ── Items ─────────────────────────────────────────────────────────────────
@@ -95,8 +107,6 @@ class ItemDetailViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { db.deadlineDao().delete(deadline) }
     }
 
-    // Variante che ritorna la prossima dueDateEpochMs (per rischedulare le notifiche)
-    // null = deadline eliminata (non ricorrente)
     suspend fun markAsPaidAndReturnNextDueDate(
         deadline: DeadlineEntity,
         amountCents: Long? = null,
@@ -216,7 +226,6 @@ class ItemDetailViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { db.appointmentDao().delete(appointment) }
     }
 
-    // Segna una lista di appuntamenti come pagati e crea un record fattura nello storico
     fun createInvoice(
         itemId: Long,
         appointments: List<AppointmentEntity>,

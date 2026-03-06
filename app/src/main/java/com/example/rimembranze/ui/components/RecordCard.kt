@@ -1,5 +1,6 @@
 package com.example.rimembranze.ui.components
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -25,6 +26,8 @@ fun RecordCard(
     onDelete: () -> Unit,
     onUpdateUniSalute: (sent: Boolean, status: String?, sentEpochMs: Long?) -> Unit
 ) {
+    var deleteConfirm by remember { mutableStateOf(false) }
+
     Card(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
         shape = RoundedCornerShape(16.dp),
@@ -42,9 +45,10 @@ fun RecordCard(
                 Spacer(Modifier.width(10.dp))
                 Text(record.title, color = TextPrimary, fontWeight = FontWeight.SemiBold,
                     fontSize = 16.sp, modifier = Modifier.weight(1f))
-                IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                IconButton(onClick = { deleteConfirm = true }, modifier = Modifier.size(32.dp)) {
                     Icon(Icons.Default.Delete, contentDescription = null,
-                        tint = TextSecondary, modifier = Modifier.size(16.dp))
+                        tint = if (deleteConfirm) DestructiveRed else TextSecondary,
+                        modifier = Modifier.size(16.dp))
                 }
             }
 
@@ -67,7 +71,26 @@ fun RecordCard(
                 }
             }
 
-            if (record.type == RecordType.Visita.name || record.type == RecordType.Pagamento.name) {
+            // ── Conferma eliminazione ─────────────────────────────────────
+            AnimatedVisibility(visible = deleteConfirm) {
+                Column {
+                    Spacer(Modifier.height(12.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(onClick = { deleteConfirm = false }, modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = TextSecondary),
+                            border = ButtonDefaults.outlinedButtonBorder.copy()
+                        ) { Text("Annulla", fontSize = 13.sp) }
+                        Button(onClick = { onDelete(); deleteConfirm = false }, modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = DestructiveRed, contentColor = Color.White)
+                        ) { Text("Conferma", fontSize = 13.sp) }
+                    }
+                }
+            }
+
+            if (!deleteConfirm &&
+                (record.type == RecordType.Visita.name || record.type == RecordType.Pagamento.name)) {
                 Spacer(Modifier.height(10.dp))
                 HorizontalDivider(thickness = 0.5.dp, color = DividerColor)
                 Spacer(Modifier.height(10.dp))
