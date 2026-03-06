@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.rimembranze.data.db.ItemType
+import com.example.rimembranze.ui.components.DestructiveRed
 import com.example.rimembranze.ui.vm.DashboardViewModel
 import com.example.rimembranze.ui.vm.ItemsViewModel
 import kotlinx.coroutines.launch
@@ -94,11 +95,15 @@ fun MainScreen(
 
     var showAddSheet by remember { mutableStateOf(false) }
 
+    // DOPO
     if (selectedItemId != null) {
         ItemDetailScreen(
             itemId = selectedItemId!!,
             scrollToDeadlineId = scrollToDeadlineId,
-            onBack = { selectedItemId = null }
+            onBack = {
+                selectedItemId = null
+                scrollToDeadlineId = null   // ← resetta dopo il ritorno
+            }
         )
         return
     }
@@ -860,11 +865,11 @@ private fun UpcomingDeadlineRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Dot — per gli scaduti pulsa visivamente con alpha
-        val dotAlpha by androidx.compose.animation.core.animateFloatAsState(
+        val dotAlpha by animateFloatAsState(
             targetValue = 1f,
-            animationSpec = androidx.compose.animation.core.infiniteRepeatable(
-                animation = androidx.compose.animation.core.tween(800),
-                repeatMode = androidx.compose.animation.core.RepeatMode.Reverse
+            animationSpec = infiniteRepeatable(
+                animation = tween(800),
+                repeatMode = RepeatMode.Reverse
             ),
             label = "dot_pulse"
         )

@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.rimembranze.data.db.AppDatabase
+import com.example.rimembranze.data.db.AppointmentEntity
 import com.example.rimembranze.data.db.DeadlineEntity
 import com.example.rimembranze.data.db.ItemEntity
 import com.example.rimembranze.data.db.RecordEntity
@@ -19,7 +20,10 @@ data class ItemDetailUiState(
     val isLoading: Boolean = true,
     val item: ItemEntity? = null,
     val deadlines: List<DeadlineEntity> = emptyList(),
-    val records: List<RecordEntity> = emptyList()
+    val records: List<RecordEntity> = emptyList(),
+    val appointmentsPending: List<AppointmentEntity> = emptyList(),      // futuri
+    val appointmentsDoneNotPaid: List<AppointmentEntity> = emptyList(),  // da fatturare
+    val appointmentsPaid: List<AppointmentEntity> = emptyList()          // storico
 )
 
 class ItemDetailViewModel(app: Application) : AndroidViewModel(app) {
@@ -30,13 +34,20 @@ class ItemDetailViewModel(app: Application) : AndroidViewModel(app) {
         return combine(
             db.itemDao().observeById(itemId),
             db.deadlineDao().observeByItem(itemId),
-            db.recordDao().observeByItem(itemId)
-        ) { item, deadlines, records ->
+            db.recordDao().observeByItem(itemId),
+            db.appointmentDao().observePending(itemId),
+            db.appointmentDao().observeDoneNotPaid(itemId),
+            db.appointmentDao().observePaid(itemId)
+        ) { values ->
+            @Suppress("UNCHECKED_CAST")
             ItemDetailUiState(
-                isLoading = false,
-                item      = item,
-                deadlines = deadlines,
-                records   = records
+                isLoading               = false,
+                item                    = values[0] as? ItemEntity,
+                deadlines               = values[1] as List<DeadlineEntity>,
+                records                 = values[2] as List<RecordEntity>,
+                appointmentsPending     = values[3] as List<AppointmentEntity>,
+                appointmentsDoneNotPaid = values[4] as List<AppointmentEntity>,
+                appointmentsPaid        = values[5] as List<AppointmentEntity>
             )
         }.stateIn(
             scope        = viewModelScope,
@@ -82,38 +93,6 @@ class ItemDetailViewModel(app: Application) : AndroidViewModel(app) {
 
     fun deleteDeadline(deadline: DeadlineEntity) {
         viewModelScope.launch { db.deadlineDao().delete(deadline) }
-    }
-
-    fun markAsPaid(
-        deadline: DeadlineEntity,
-        amountCents: Long? = null,
-        notes: String? = null
-    ) {
-        viewModelScope.launch {
-            val now = System.currentTimeMillis()
-            db.recordDao().insert(
-                RecordEntity(
-                    itemId      = deadline.itemId,
-                    deadlineId  = deadline.id,
-                    type        = RecordType.Pagamento.name,
-                    title       = deadline.category,
-                    dateEpochMs = now,
-                    amountCents = amountCents ?: deadline.lastCostCents,
-                    notes       = notes
-                )
-            )
-            val updated = deadline.copy(
-                lastPaidEpochMs = now,
-                lastCostCents   = amountCents ?: deadline.lastCostCents
-            )
-            if (deadline.recurrence == "YEARLY") {
-                val cal = Calendar.getInstance().apply { timeInMillis = deadline.dueDateEpochMs }
-                cal.add(Calendar.YEAR, 1)
-                db.deadlineDao().update(updated.copy(dueDateEpochMs = cal.timeInMillis))
-            } else {
-                db.deadlineDao().delete(updated)
-            }
-        }
     }
 
     // Variante che ritorna la prossima dueDateEpochMs (per rischedulare le notifiche)
@@ -194,6 +173,66 @@ class ItemDetailViewModel(app: Application) : AndroidViewModel(app) {
                     unisaluteSent        = sent,
                     unisaluteStatus      = status,
                     unisaluteSentEpochMs = sentEpochMs
+                )
+            )
+        }
+    }
+
+    // ── Appointments ──────────────────────────────────────────────────────────
+
+    suspend fun addAppointmentAndReturnId(
+        itemId: Long,
+        title: String,
+        dateEpochMs: Long,
+        notes: String? = null,
+        amountCents: Long? = null
+    ): Long = db.appointmentDao().insert(
+        AppointmentEntity(
+            itemId      = itemId,
+            title       = title,
+            dateEpochMs = dateEpochMs,
+            notes       = notes,
+            amountCents = amountCents
+        )
+    )
+
+    fun markAppointmentDone(
+        appointment: AppointmentEntity,
+        notes: String? = null,
+        amountCents: Long? = null
+    ) {
+        viewModelScope.launch {
+            db.appointmentDao().update(
+                appointment.copy(
+                    isDone      = true,
+                    notes       = notes ?: appointment.notes,
+                    amountCents = amountCents ?: appointment.amountCents
+                )
+            )
+        }
+    }
+
+    fun deleteAppointment(appointment: AppointmentEntity) {
+        viewModelScope.launch { db.appointmentDao().delete(appointment) }
+    }
+
+    // Segna una lista di appuntamenti come pagati e crea un record fattura nello storico
+    fun createInvoice(
+        itemId: Long,
+        appointments: List<AppointmentEntity>,
+        notes: String? = null
+    ) {
+        viewModelScope.launch {
+            db.appointmentDao().markAsPaid(appointments.map { it.id })
+            val total = appointments.sumOf { it.amountCents ?: 0L }
+            db.recordDao().insert(
+                RecordEntity(
+                    itemId      = itemId,
+                    type        = RecordType.Pagamento.name,
+                    title       = "Fattura (${appointments.size} sedute)",
+                    dateEpochMs = System.currentTimeMillis(),
+                    amountCents = total.takeIf { it > 0 },
+                    notes       = notes
                 )
             )
         }
