@@ -160,56 +160,59 @@ fun ItemDetailScreen(
                         }
                     }
 
-                    // ── Contenuto tab con slide orizzontale ──────────────────
-                    item {
-                        AnimatedContent(
-                            targetState = activeTab,
-                            transitionSpec = {
-                                val toRight = targetState == DetailTab.APPUNTAMENTI
-                                (slideInHorizontally { if (toRight) it else -it } + fadeIn()) togetherWith
-                                        (slideOutHorizontally { if (toRight) -it else it } + fadeOut())
-                            },
-                            label = "tab_content"
-                        ) { tab ->
-                            // Wrapper colonna — il LazyColumn non può avere LazyColumn nested,
-                            // quindi usiamo Column non-lazy per il contenuto animato
-                            // Le liste sono corte in uso reale, accettabile
-                            Column {
-                                if (tab == DetailTab.SCADENZE) {
-                                    ScadenzeContent(
-                                        state = state,
-                                        activeHighlight = activeHighlight,
-                                        onMarkPaid = { d, cents ->
-                                            scope.launch {
-                                                val next = vm.markAsPaidAndReturnNextDueDate(d, cents)
-                                                if (next == null) DeadlineReminderScheduler.cancel(context, d.id)
-                                                else DeadlineReminderScheduler.schedule(context, d.id, next, d.reminderDaysCsv)
-                                            }
-                                        },
-                                        onDeleteDeadline = { d ->
-                                            vm.deleteDeadline(d)
-                                            DeadlineReminderScheduler.cancel(context, d.id)
-                                        },
-                                        onEditDeadline = { d -> editingDeadline = d },
-                                        onDeleteRecord = { r -> vm.deleteRecord(r) },
-                                        onUpdateUniSalute = { r, s, st, ms -> vm.updateRecordUniSalute(r, s, st, ms) }
-                                    )
-                                } else {
-                                    AppuntamentiContent(
-                                        state    = state,
-                                        onToggleOrder = { vm.toggleAppointmentsOrder() },
-                                        onMarkDone = { a, notes, cents ->
-                                            vm.markAppointmentDone(a, notes, cents)
-                                            AppointmentReminderScheduler.cancel(context, a.id)
-                                        },
-                                        onDeleteAppointment = { a ->
-                                            vm.deleteAppointment(a)
-                                            AppointmentReminderScheduler.cancel(context, a.id)
-                                        },
-                                        onShowInvoice = { showInvoiceDialog = true }
-                                    )
-                                }
+                    // ── Tab: Scadenze — items diretti per scroll preciso ──────
+                    if (activeTab == DetailTab.SCADENZE) {
+                        item(key = "sec_scadenze") { SectionHeader("SCADENZE", state.deadlines.size) }
+                        if (state.deadlines.isEmpty()) {
+                            item(key = "empty_deadlines") { EmptyState("Nessuna scadenza registrata", "📅") }
+                        } else {
+                            items(state.deadlines, key = { "dl_${it.id}" }) { d ->
+                                DeadlineCard(
+                                    deadline      = d,
+                                    isHighlighted = d.id == activeHighlight,
+                                    onMarkPaid = { cents ->
+                                        scope.launch {
+                                            val next = vm.markAsPaidAndReturnNextDueDate(d, cents)
+                                            if (next == null) DeadlineReminderScheduler.cancel(context, d.id)
+                                            else DeadlineReminderScheduler.schedule(context, d.id, next, d.reminderDaysCsv)
+                                        }
+                                    },
+                                    onDelete = { vm.deleteDeadline(d); DeadlineReminderScheduler.cancel(context, d.id) },
+                                    onEdit   = { editingDeadline = d }
+                                )
                             }
+                        }
+                        item(key = "spacer_records") { Spacer(Modifier.height(10.dp)) }
+                        item(key = "sec_records") { SectionHeader("STORICO PAGAMENTI", state.records.size) }
+                        if (state.records.isEmpty()) {
+                            item(key = "empty_records") { EmptyState("Nessun pagamento registrato", "💳") }
+                        } else {
+                            items(state.records, key = { "rec_${it.id}" }) { r ->
+                                RecordCard(
+                                    record            = r,
+                                    onDelete          = { vm.deleteRecord(r) },
+                                    onUpdateUniSalute = { s, st, ms -> vm.updateRecordUniSalute(r, s, st, ms) }
+                                )
+                            }
+                        }
+                    }
+
+                    // ── Tab: Appuntamenti ────────────────────────────────────
+                    if (activeTab == DetailTab.APPUNTAMENTI) {
+                        item(key = "appuntamenti_content") {
+                            AppuntamentiContent(
+                                state         = state,
+                                onToggleOrder = { vm.toggleAppointmentsOrder() },
+                                onMarkDone    = { a, notes, cents ->
+                                    vm.markAppointmentDone(a, notes, cents)
+                                    AppointmentReminderScheduler.cancel(context, a.id)
+                                },
+                                onDeleteAppointment = { a ->
+                                    vm.deleteAppointment(a)
+                                    AppointmentReminderScheduler.cancel(context, a.id)
+                                },
+                                onShowInvoice = { showInvoiceDialog = true }
+                            )
                         }
                     }
                 }
@@ -342,49 +345,6 @@ fun ItemDetailScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) { Text("Annulla") }
                 }
-            )
-        }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ScadenzeContent
-// ─────────────────────────────────────────────────────────────────────────────
-
-@Composable
-private fun ScadenzeContent(
-    state: com.example.rimembranze.ui.vm.ItemDetailUiState,
-    activeHighlight: Long?,
-    onMarkPaid: (com.example.rimembranze.data.db.DeadlineEntity, Long?) -> Unit,
-    onDeleteDeadline: (com.example.rimembranze.data.db.DeadlineEntity) -> Unit,
-    onEditDeadline: (com.example.rimembranze.data.db.DeadlineEntity) -> Unit,
-    onDeleteRecord: (com.example.rimembranze.data.db.RecordEntity) -> Unit,
-    onUpdateUniSalute: (com.example.rimembranze.data.db.RecordEntity, Boolean, String?, Long?) -> Unit
-) {
-    SectionHeader("SCADENZE", state.deadlines.size)
-    if (state.deadlines.isEmpty()) {
-        EmptyState("Nessuna scadenza registrata", "📅")
-    } else {
-        state.deadlines.forEach { d ->
-            DeadlineCard(
-                deadline      = d,
-                isHighlighted = d.id == activeHighlight,
-                onMarkPaid    = { cents -> onMarkPaid(d, cents) },
-                onDelete      = { onDeleteDeadline(d) },
-                onEdit        = { onEditDeadline(d) }
-            )
-        }
-    }
-    Spacer(Modifier.height(10.dp))
-    SectionHeader("STORICO PAGAMENTI", state.records.size)
-    if (state.records.isEmpty()) {
-        EmptyState("Nessun pagamento registrato", "💳")
-    } else {
-        state.records.forEach { r ->
-            RecordCard(
-                record            = r,
-                onDelete          = { onDeleteRecord(r) },
-                onUpdateUniSalute = { s, st, ms -> onUpdateUniSalute(r, s, st, ms) }
             )
         }
     }
