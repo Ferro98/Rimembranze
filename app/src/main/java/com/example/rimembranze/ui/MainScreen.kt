@@ -79,7 +79,8 @@ private fun typeLabel(type: ItemType?): String = when (type) {
 @Composable
 fun MainScreen(
     initialItemId: Long? = null,
-    initialDeadlineId: Long? = null
+    initialDeadlineId: Long? = null,
+    initialAppointmentId: Long? = null
 ) {
     val vm: ItemsViewModel = viewModel()
     val state by vm.uiState.collectAsState()
@@ -136,8 +137,9 @@ fun MainScreen(
     var newName            by remember { mutableStateOf("") }
     var selectedType       by remember { mutableStateOf(ItemType.Altro) }
     var typeMenuExpanded   by remember { mutableStateOf(false) }
-    var selectedItemId     by remember { mutableStateOf<Long?>(initialItemId) }
-    var scrollToDeadlineId by remember { mutableStateOf<Long?>(initialDeadlineId) }
+    var selectedItemId        by remember { mutableStateOf<Long?>(initialItemId) }
+    var scrollToDeadlineId    by remember { mutableStateOf<Long?>(initialDeadlineId) }
+    var scrollToAppointmentId by remember { mutableStateOf<Long?>(initialAppointmentId) }
     var showAddSheet       by remember { mutableStateOf(false) }
     var searchQuery        by remember { mutableStateOf("") }
     var searchActive       by remember { mutableStateOf(false) }
@@ -160,11 +162,13 @@ fun MainScreen(
     ) { currentItemId ->
         if (currentItemId != null) {
             ItemDetailScreen(
-                itemId             = currentItemId,
-                scrollToDeadlineId = scrollToDeadlineId,
+                itemId                = currentItemId,
+                scrollToDeadlineId    = scrollToDeadlineId,
+                scrollToAppointmentId = scrollToAppointmentId,
                 onBack = {
-                    selectedItemId     = null
-                    scrollToDeadlineId = null
+                    selectedItemId        = null
+                    scrollToDeadlineId    = null
+                    scrollToAppointmentId = null
                 }
             )
         } else {

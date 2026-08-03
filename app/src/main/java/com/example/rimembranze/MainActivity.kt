@@ -35,14 +35,16 @@ class MainActivity : ComponentActivity() {
 
         // Legge gli extra inviati dal PendingIntent della notifica
         // Sia al primo avvio (onCreate) sia quando l'app è già aperta (onNewIntent)
-        val initialItemId     = intent?.getLongExtra("itemId", -1L).takeIf { it != -1L }
-        val initialDeadlineId = intent?.getLongExtra("deadlineId", -1L).takeIf { it != -1L }
+        val initialItemId        = intent?.getLongExtra("itemId", -1L).takeIf { it != -1L }
+        val initialDeadlineId    = intent?.getLongExtra("deadlineId", -1L).takeIf { it != -1L }
+        val initialAppointmentId = intent?.getLongExtra("appointmentId", -1L).takeIf { it != -1L }
 
         setContent {
             RimembranzeTheme {
                 VaultApp(
-                    initialItemId     = initialItemId,
-                    initialDeadlineId = initialDeadlineId
+                    initialItemId        = initialItemId,
+                    initialDeadlineId    = initialDeadlineId,
+                    initialAppointmentId = initialAppointmentId
                 )
             }
         }
@@ -54,13 +56,15 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)   // aggiorna l'intent corrente — VaultApp lo rileggerà al prossimo recompose
         // Per forzare la navigazione rigeneriamo il content con i nuovi extra
-        val itemId     = intent.getLongExtra("itemId", -1L).takeIf { it != -1L }
-        val deadlineId = intent.getLongExtra("deadlineId", -1L).takeIf { it != -1L }
+        val itemId        = intent.getLongExtra("itemId", -1L).takeIf { it != -1L }
+        val deadlineId    = intent.getLongExtra("deadlineId", -1L).takeIf { it != -1L }
+        val appointmentId = intent.getLongExtra("appointmentId", -1L).takeIf { it != -1L }
         setContent {
             RimembranzeTheme {
                 VaultApp(
-                    initialItemId     = itemId,
-                    initialDeadlineId = deadlineId
+                    initialItemId        = itemId,
+                    initialDeadlineId    = deadlineId,
+                    initialAppointmentId = appointmentId
                 )
             }
         }

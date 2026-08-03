@@ -27,6 +27,7 @@ import com.example.rimembranze.data.db.AppointmentEntity
 @Composable
 fun AppointmentCard(
     appointment: AppointmentEntity,
+    isHighlighted: Boolean = false,
     onMarkDone: (notes: String?, amountCents: Long?) -> Unit,
     onDelete: () -> Unit
 ) {
@@ -60,10 +61,14 @@ fun AppointmentCard(
         label = "dot_pulse"
     )
 
+    val cardBorder = if (isHighlighted)
+        androidx.compose.foundation.BorderStroke(1.5.dp, AccentBlue.copy(alpha = 0.6f)) else null
+
     Card(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = SurfaceDark),
+        border = cardBorder,
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(Modifier.padding(16.dp)) {

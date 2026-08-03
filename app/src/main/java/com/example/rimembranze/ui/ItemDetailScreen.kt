@@ -43,6 +43,7 @@ private enum class DetailTab { SCADENZE, APPUNTAMENTI }
 fun ItemDetailScreen(
     itemId: Long,
     scrollToDeadlineId: Long? = null,
+    scrollToAppointmentId: Long? = null,
     onBack: () -> Unit
 ) {
     BackHandler { onBack() }
@@ -66,7 +67,9 @@ fun ItemDetailScreen(
         }
     }
 
-    var activeTab                by remember { mutableStateOf(DetailTab.SCADENZE) }
+    var activeTab by remember {
+        mutableStateOf(if (scrollToAppointmentId != null) DetailTab.APPUNTAMENTI else DetailTab.SCADENZE)
+    }
     var showAddDeadlineDialog    by remember { mutableStateOf(false) }
     var showAddRecordDialog      by remember { mutableStateOf(false) }
     var showAddAppointmentDialog by remember { mutableStateOf(false) }
@@ -79,6 +82,9 @@ fun ItemDetailScreen(
     var hasScrolled     by remember { mutableStateOf(false) }
     var activeHighlight by remember { mutableStateOf(scrollToDeadlineId) }
 
+    var hasScrolledAppointment     by remember { mutableStateOf(false) }
+    var activeHighlightAppointment by remember { mutableStateOf(scrollToAppointmentId) }
+
     // Scroll + highlight scadenza
     LaunchedEffect(scrollToDeadlineId, state.deadlines) {
         if (scrollToDeadlineId == null || hasScrolled || state.deadlines.isEmpty()) return@LaunchedEffect
@@ -89,6 +95,21 @@ fun ItemDetailScreen(
         listState.animateScrollToItem(index = 3 + idx, scrollOffset = -80)
         kotlinx.coroutines.delay(2000)
         activeHighlight = null
+    }
+
+    // Scroll + highlight appuntamento (stesso schema della scadenza: header(0) + tab(1) +
+    // header sezione "prossimi"(2) → l'appuntamento pending idx-esimo è all'indice 3+idx)
+    LaunchedEffect(scrollToAppointmentId, activeTab, state.appointmentsPending) {
+        if (scrollToAppointmentId == null || hasScrolledAppointment ||
+            activeTab != DetailTab.APPUNTAMENTI || state.appointmentsPending.isEmpty()
+        ) return@LaunchedEffect
+        val idx = state.appointmentsPending.indexOfFirst { it.id == scrollToAppointmentId }
+        if (idx == -1) return@LaunchedEffect
+        hasScrolledAppointment = true
+        while (listState.layoutInfo.totalItemsCount == 0) kotlinx.coroutines.delay(16)
+        listState.animateScrollToItem(index = 3 + idx, scrollOffset = -80)
+        kotlinx.coroutines.delay(2000)
+        activeHighlightAppointment = null
     }
 
     // Snackbar feedback pagamento ricorrente
@@ -263,20 +284,95 @@ fun ItemDetailScreen(
 
                         // ── Tab: Appuntamenti ─────────────────────────────────
                         if (activeTab == DetailTab.APPUNTAMENTI) {
-                            item(key = "appuntamenti_content") {
-                                AppuntamentiContent(
-                                    state         = state,
-                                    onToggleOrder = { vm.toggleAppointmentsOrder() },
-                                    onMarkDone    = { a, notes, cents ->
-                                        vm.markAppointmentDone(a, notes, cents)
-                                        AppointmentReminderScheduler.cancel(context, a.id)
-                                    },
-                                    onDeleteAppointment = { a ->
+                            item(key = "sec_pending") {
+                                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically) {
+                                    Text("PROSSIMI", color = TextSecondary, fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold, letterSpacing = 2.sp, modifier = Modifier.weight(1f))
+                                    Text("${state.appointmentsPending.size}", color = AccentBlue,
+                                        fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    Spacer(Modifier.width(12.dp))
+                                    IconButton(onClick = { vm.toggleAppointmentsOrder() }, modifier = Modifier.size(28.dp)) {
+                                        Icon(Icons.AutoMirrored.Filled.Sort,
+                                            contentDescription = if (state.appointmentsAscending) "Ordine discendente" else "Ordine ascendente",
+                                            tint = AccentBlue, modifier = Modifier.size(16.dp))
+                                    }
+                                    Text(if (state.appointmentsAscending) "↑" else "↓",
+                                        color = AccentBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                }
+                                HorizontalDivider(color = DividerColor, thickness = 0.5.dp)
+                            }
+                            if (state.appointmentsPending.isEmpty()) {
+                                item(key = "empty_pending") { EmptyState("Nessun appuntamento programmato", "🗓") }
+                            } else {
+                                items(state.appointmentsPending, key = { "appt_${it.id}" }) { a ->
+                                    AppointmentCard(
+                                        appointment   = a,
+                                        isHighlighted = a.id == activeHighlightAppointment,
+                                        onMarkDone = { notes, cents ->
+                                            vm.markAppointmentDone(a, notes, cents)
+                                            AppointmentReminderScheduler.cancel(context, a.id)
+                                        },
+                                        onDelete = {
+                                            vm.deleteAppointment(a)
+                                            AppointmentReminderScheduler.cancel(context, a.id)
+                                        }
+                                    )
+                                }
+                            }
+
+                            if (state.appointmentsDoneNotPaid.isNotEmpty()) {
+                                item(key = "spacer_donenotpaid") { Spacer(Modifier.height(10.dp)) }
+                                item(key = "sec_donenotpaid") {
+                                    Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+                                        verticalAlignment = Alignment.CenterVertically) {
+                                        Text("DA FATTURARE", color = AccentGreen, fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold, letterSpacing = 2.sp, modifier = Modifier.weight(1f))
+                                        Text("${state.appointmentsDoneNotPaid.size}", color = AccentGreen,
+                                            fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                    HorizontalDivider(color = DividerColor, thickness = 0.5.dp)
+                                }
+                                items(state.appointmentsDoneNotPaid, key = { "apptdone_${it.id}" }) { a ->
+                                    AppointmentDoneCard(appointment = a, onDelete = {
                                         vm.deleteAppointment(a)
                                         AppointmentReminderScheduler.cancel(context, a.id)
-                                    },
-                                    onShowInvoice = { showInvoiceDialog = true }
-                                )
+                                    })
+                                }
+                                item(key = "invoice_summary") {
+                                    val total = state.appointmentsDoneNotPaid.sumOf { it.amountCents ?: 0L }
+                                    Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text("${state.appointmentsDoneNotPaid.size} sedute non fatturate",
+                                                color = TextSecondary, fontSize = 12.sp)
+                                            if (total > 0) Text("Totale: €${"%.2f".format(total / 100.0)}",
+                                                color = AccentGreen, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                                        }
+                                        Button(onClick = { showInvoiceDialog = true }, shape = RoundedCornerShape(10.dp),
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = AccentGreen.copy(alpha = 0.15f), contentColor = AccentGreen),
+                                            elevation = ButtonDefaults.buttonElevation(0.dp)) {
+                                            Icon(Icons.Default.Receipt, null, modifier = Modifier.size(15.dp))
+                                            Spacer(Modifier.width(6.dp))
+                                            Text("Crea fattura", fontWeight = FontWeight.Medium, fontSize = 13.sp)
+                                        }
+                                    }
+                                }
+                            }
+
+                            item(key = "spacer_history") { Spacer(Modifier.height(10.dp)) }
+                            item(key = "sec_history") { SectionHeader("STORICO SEDUTE", state.appointmentsPaid.size, AccentBlue) }
+                            if (state.appointmentsPaid.isEmpty()) {
+                                item(key = "empty_history") { EmptyState("Nessuna seduta completata", "✓") }
+                            } else {
+                                items(state.appointmentsPaid, key = { "apptpaid_${it.id}" }) { a ->
+                                    AppointmentDoneCard(appointment = a, showPaidBadge = true, onDelete = {
+                                        vm.deleteAppointment(a)
+                                        AppointmentReminderScheduler.cancel(context, a.id)
+                                    })
+                                }
                             }
                         }
                     }
@@ -475,87 +571,3 @@ private fun StatChip(label: String, value: String, color: Color, modifier: Modif
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// AppuntamentiContent
-// ─────────────────────────────────────────────────────────────────────────────
-
-@Composable
-private fun AppuntamentiContent(
-    state: com.example.rimembranze.ui.vm.ItemDetailUiState,
-    onToggleOrder: () -> Unit,
-    onMarkDone: (com.example.rimembranze.data.db.AppointmentEntity, String?, Long?) -> Unit,
-    onDeleteAppointment: (com.example.rimembranze.data.db.AppointmentEntity) -> Unit,
-    onShowInvoice: () -> Unit
-) {
-    Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically) {
-        Text("PROSSIMI", color = TextSecondary, fontSize = 11.sp,
-            fontWeight = FontWeight.Bold, letterSpacing = 2.sp, modifier = Modifier.weight(1f))
-        Text("${state.appointmentsPending.size}", color = AccentBlue,
-            fontSize = 11.sp, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.width(12.dp))
-        IconButton(onClick = onToggleOrder, modifier = Modifier.size(28.dp)) {
-            Icon(Icons.AutoMirrored.Filled.Sort,
-                contentDescription = if (state.appointmentsAscending) "Ordine discendente" else "Ordine ascendente",
-                tint = AccentBlue, modifier = Modifier.size(16.dp))
-        }
-        Text(if (state.appointmentsAscending) "↑" else "↓",
-            color = AccentBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-    }
-    HorizontalDivider(color = DividerColor, thickness = 0.5.dp)
-
-    if (state.appointmentsPending.isEmpty()) {
-        EmptyState("Nessun appuntamento programmato", "🗓")
-    } else {
-        state.appointmentsPending.forEach { a ->
-            AppointmentCard(appointment = a,
-                onMarkDone = { notes, cents -> onMarkDone(a, notes, cents) },
-                onDelete   = { onDeleteAppointment(a) })
-        }
-    }
-
-    if (state.appointmentsDoneNotPaid.isNotEmpty()) {
-        Spacer(Modifier.height(10.dp))
-        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically) {
-            Text("DA FATTURARE", color = AccentGreen, fontSize = 11.sp,
-                fontWeight = FontWeight.Bold, letterSpacing = 2.sp, modifier = Modifier.weight(1f))
-            Text("${state.appointmentsDoneNotPaid.size}", color = AccentGreen,
-                fontSize = 11.sp, fontWeight = FontWeight.Bold)
-        }
-        HorizontalDivider(color = DividerColor, thickness = 0.5.dp)
-        state.appointmentsDoneNotPaid.forEach { a ->
-            AppointmentDoneCard(appointment = a, onDelete = { onDeleteAppointment(a) })
-        }
-        val total = state.appointmentsDoneNotPaid.sumOf { it.amountCents ?: 0L }
-        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text("${state.appointmentsDoneNotPaid.size} sedute non fatturate",
-                    color = TextSecondary, fontSize = 12.sp)
-                if (total > 0) Text("Totale: €${"%.2f".format(total / 100.0)}",
-                    color = AccentGreen, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-            }
-            Button(onClick = onShowInvoice, shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = AccentGreen.copy(alpha = 0.15f), contentColor = AccentGreen),
-                elevation = ButtonDefaults.buttonElevation(0.dp)) {
-                Icon(Icons.Default.Receipt, null, modifier = Modifier.size(15.dp))
-                Spacer(Modifier.width(6.dp))
-                Text("Crea fattura", fontWeight = FontWeight.Medium, fontSize = 13.sp)
-            }
-        }
-    }
-
-    Spacer(Modifier.height(10.dp))
-    SectionHeader("STORICO SEDUTE", state.appointmentsPaid.size, AccentBlue)
-    if (state.appointmentsPaid.isEmpty()) {
-        EmptyState("Nessuna seduta completata", "✓")
-    } else {
-        state.appointmentsPaid.forEach { a ->
-            AppointmentDoneCard(appointment = a, showPaidBadge = true,
-                onDelete = { onDeleteAppointment(a) })
-        }
-    }
-}
