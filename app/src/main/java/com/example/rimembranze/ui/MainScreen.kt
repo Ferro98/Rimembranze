@@ -10,8 +10,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.*
@@ -625,27 +627,34 @@ private fun NavigationDrawerContent(
             }
         }
         HorizontalDivider(thickness = 0.5.dp, color = DividerColor)
-        Spacer(Modifier.height(12.dp))
-        Text("CATEGORIE", color = TextSecondary, fontSize = 10.sp, fontWeight = FontWeight.Bold,
-            letterSpacing = 2.sp, modifier = Modifier.padding(start = 24.dp, bottom = 8.dp))
-        DrawerItem(icon = typeIcon(null), label = "Tutti", count = totalCount,
-            color = AccentAmber, isSelected = selectedType == null, onClick = { onSelect(null) })
-        Spacer(Modifier.height(4.dp))
-        HorizontalDivider(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-            thickness = 0.5.dp, color = DividerColor)
-        availableTypes.filterNotNull().forEach { type ->
-            DrawerItem(icon = typeIcon(type), label = typeLabel(type), count = itemCounts[type] ?: 0,
-                color = typeColor(type), isSelected = selectedType == type, onClick = { onSelect(type) })
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+        ) {
+            Spacer(Modifier.height(12.dp))
+            Text("CATEGORIE", color = TextSecondary, fontSize = 10.sp, fontWeight = FontWeight.Bold,
+                letterSpacing = 2.sp, modifier = Modifier.padding(start = 24.dp, bottom = 8.dp))
+            DrawerItem(icon = typeIcon(null), label = "Tutti", count = totalCount,
+                color = AccentAmber, isSelected = selectedType == null, onClick = { onSelect(null) })
+            Spacer(Modifier.height(4.dp))
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                thickness = 0.5.dp, color = DividerColor)
+            availableTypes.filterNotNull().forEach { type ->
+                DrawerItem(icon = typeIcon(type), label = typeLabel(type), count = itemCounts[type] ?: 0,
+                    color = typeColor(type), isSelected = selectedType == type, onClick = { onSelect(type) })
+            }
+            Spacer(Modifier.height(4.dp))
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                thickness = 0.5.dp, color = DividerColor)
+            Text("DATI", color = TextSecondary, fontSize = 10.sp, fontWeight = FontWeight.Bold,
+                letterSpacing = 2.sp, modifier = Modifier.padding(start = 24.dp, bottom = 8.dp))
+            DrawerItem(icon = Icons.Default.Backup, label = "Esporta backup completo", count = 0,
+                color = AccentAmber, isSelected = false, onClick = onExportBackup)
+            DrawerItem(icon = Icons.Default.Restore, label = "Importa da backup", count = 0,
+                color = AccentAmber, isSelected = false, onClick = onImportBackup)
+            Spacer(Modifier.height(12.dp))
         }
-        Spacer(Modifier.height(4.dp))
-        HorizontalDivider(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-            thickness = 0.5.dp, color = DividerColor)
-        Text("DATI", color = TextSecondary, fontSize = 10.sp, fontWeight = FontWeight.Bold,
-            letterSpacing = 2.sp, modifier = Modifier.padding(start = 24.dp, bottom = 8.dp))
-        DrawerItem(icon = Icons.Default.Backup, label = "Esporta backup completo", count = 0,
-            color = AccentAmber, isSelected = false, onClick = onExportBackup)
-        DrawerItem(icon = Icons.Default.Restore, label = "Importa da backup", count = 0,
-            color = AccentAmber, isSelected = false, onClick = onImportBackup)
     }
 }
 
