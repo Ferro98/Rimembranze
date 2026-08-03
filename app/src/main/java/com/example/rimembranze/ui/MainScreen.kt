@@ -112,8 +112,14 @@ fun MainScreen(
     }
     LaunchedEffect(backupImportResult) {
         backupImportResult?.let { r ->
-            backupMessage = "✓ Importati: ${r.items} elementi, ${r.deadlines} scadenze, " +
-                    "${r.records} pagamenti, ${r.appointments} appuntamenti"
+            val total = r.items + r.deadlines + r.records + r.appointments
+            backupMessage = if (total == 0) {
+                "✓ Backup importato — nessuna novità, era tutto già presente"
+            } else {
+                "✓ Aggiunti: ${r.items} elementi, ${r.deadlines} scadenze, " +
+                        "${r.records} pagamenti, ${r.appointments} appuntamenti " +
+                        "(i doppioni già presenti sono stati saltati)"
+            }
             vm.clearBackupFeedback()
         }
     }
