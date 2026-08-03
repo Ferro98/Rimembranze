@@ -67,6 +67,12 @@ abstract class AppDatabase : RoomDatabase() {
                     "rimembranze.db"
                 )
                     .addMigrations(MIGRATION_2_3)
+                    // Safety net: only MIGRATION_2_3 is defined and the schema history before it
+                    // isn't tracked here. Without this, opening the DB on an install still on an
+                    // earlier, unhandled version would crash on every launch instead of just
+                    // recreating the (empty) database. Add explicit migrations here as the schema
+                    // evolves further instead of relying on this fallback.
+                    .fallbackToDestructiveMigration(dropAllTables = true)
                     .build()
                     .also { INSTANCE = it }
             }

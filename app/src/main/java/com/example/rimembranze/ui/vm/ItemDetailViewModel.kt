@@ -72,26 +72,11 @@ class ItemDetailViewModel(app: Application) : AndroidViewModel(app) {
             val nextDue     = pair.second as? Long
 
             // ── Calcolo statistiche ───────────────────────────────────────
-            val yearStart = Calendar.getInstance().apply {
-                set(Calendar.DAY_OF_YEAR, 1); set(Calendar.HOUR_OF_DAY, 0)
-                set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
-            }.timeInMillis
-
-            val totalSpent = records.sumOf { it.amountCents ?: 0L }
-            val totalThisYear = records
-                .filter { it.dateEpochMs >= yearStart }
-                .sumOf { it.amountCents ?: 0L }
-
-            val allDone = paid + doneNotPaid
-            val paidWithAmount = allDone.filter { (it.amountCents ?: 0L) > 0L }
-            val avgCents = if (paidWithAmount.isEmpty()) null
-            else paidWithAmount.sumOf { it.amountCents!! } / paidWithAmount.size
-
-            val stats = ItemStats(
-                totalSpentCents         = totalSpent,
-                totalSpentThisYearCents = totalThisYear,
-                avgAppointmentCents     = avgCents,
-                completedAppointments   = allDone.size
+            val stats = computeItemStats(
+                records                 = records,
+                paidAppointments        = paid,
+                doneNotPaidAppointments = doneNotPaid,
+                yearStartEpochMs        = currentYearStartEpochMs()
             )
 
             ItemDetailUiState(
@@ -157,15 +142,8 @@ class ItemDetailViewModel(app: Application) : AndroidViewModel(app) {
                 dateEpochMs = now, amountCents = amountCents ?: deadline.lastCostCents, notes = notes)
         )
         val updated = deadline.copy(lastPaidEpochMs = now, lastCostCents = amountCents ?: deadline.lastCostCents)
-        return if (deadline.recurrence != "NONE") {
-            val cal = Calendar.getInstance().apply { timeInMillis = deadline.dueDateEpochMs }
-            when (deadline.recurrence) {
-                "MONTHLY"    -> cal.add(Calendar.MONTH, 1)
-                "QUARTERLY"  -> cal.add(Calendar.MONTH, 3)
-                "SEMIANNUAL" -> cal.add(Calendar.MONTH, 6)
-                "YEARLY"     -> cal.add(Calendar.YEAR, 1)
-            }
-            val nextDue = cal.timeInMillis
+        val nextDue = nextRecurrenceDate(deadline.dueDateEpochMs, deadline.recurrence)
+        return if (nextDue != null) {
             db.deadlineDao().update(updated.copy(dueDateEpochMs = nextDue))
             _lastPaidNextDueDate.value = nextDue   // ← feedback UI
             nextDue
@@ -231,17 +209,19 @@ class ItemDetailViewModel(app: Application) : AndroidViewModel(app) {
     fun buildCsvContent(records: List<RecordEntity>, appointments: List<AppointmentEntity>): String {
         val fmt = SimpleDateFormat("dd/MM/yyyy", Locale.ITALY)
         val sb = StringBuilder()
-        sb.appendLine("Tipo,Titolo,Data,Importo (€),Note")
+        sb.appendLine(csvRow(listOf("Tipo", "Titolo", "Data", "Importo (€)", "Note")))
         records.forEach { r ->
             val amount = r.amountCents?.let { "%.2f".format(it / 100.0) } ?: ""
-            val notes  = r.notes?.replace(",", ";") ?: ""
-            sb.appendLine("${r.type},${r.title},${fmt.format(Date(r.dateEpochMs))},$amount,$notes")
+            sb.appendLine(csvRow(listOf(
+                r.type, r.title, fmt.format(Date(r.dateEpochMs)), amount, r.notes ?: ""
+            )))
         }
         appointments.forEach { a ->
             val amount = a.amountCents?.let { "%.2f".format(it / 100.0) } ?: ""
-            val notes  = a.notes?.replace(",", ";") ?: ""
             val stato  = when { a.isPaid -> "Fatturata"; a.isDone -> "Effettuata"; else -> "Programmata" }
-            sb.appendLine("Seduta ($stato),${a.title},${fmt.format(Date(a.dateEpochMs))},$amount,$notes")
+            sb.appendLine(csvRow(listOf(
+                "Seduta ($stato)", a.title, fmt.format(Date(a.dateEpochMs)), amount, a.notes ?: ""
+            )))
         }
         return sb.toString()
     }
