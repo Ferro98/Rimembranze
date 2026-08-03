@@ -19,11 +19,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.rimembranze.R
 import com.example.rimembranze.data.db.DeadlineEntity
 import com.example.rimembranze.ui.MarkAsPaidDialog
 import java.util.*
@@ -52,8 +54,11 @@ fun DeadlineCard(
         else           -> AccentAmberLight
     }
 
-    // Mostra solo i giorni presenti nei REMINDER_OPTIONS — ignora valori legacy
-    val knownDays = REMINDER_OPTIONS.map { it.first }.toSet()
+    // Mostra solo i giorni presenti nei reminderOptions() — ignora valori legacy
+    val knownDays = reminderOptions().map { it.first }.toSet()
+    val sameDayLabel     = stringResource(R.string.deadline_reminder_same_day)
+    val oneDayLabel      = stringResource(R.string.deadline_reminder_1_day_before)
+    val nDaysLabelFormat = stringResource(R.string.deadline_reminder_n_days_before)
     val reminderLabel = remember(deadline.reminderDaysCsv) {
         deadline.reminderDaysCsv.split(",")
             .mapNotNull { it.trim().toIntOrNull() }
@@ -61,9 +66,9 @@ fun DeadlineCard(
             .sortedDescending()
             .joinToString(" · ") { d ->
                 when (d) {
-                    0    -> "stesso giorno"
-                    1    -> "1 giorno prima"
-                    else -> "$d giorni prima"
+                    0    -> sameDayLabel
+                    1    -> oneDayLabel
+                    else -> nDaysLabelFormat.format(d)
                 }
             }
     }
@@ -85,11 +90,11 @@ fun DeadlineCard(
                 Text(deadline.category, color = TextPrimary, fontWeight = FontWeight.SemiBold,
                     fontSize = 16.sp, modifier = Modifier.weight(1f))
                 IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.Edit, contentDescription = "Modifica",
+                    Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.deadline_edit_desc),
                         tint = TextSecondary, modifier = Modifier.size(16.dp))
                 }
                 IconButton(onClick = { deleteConfirm = true }, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.Delete, contentDescription = "Elimina",
+                    Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.detail_delete),
                         tint = if (deleteConfirm) DestructiveRed else TextSecondary,
                         modifier = Modifier.size(16.dp))
                 }
@@ -99,12 +104,12 @@ fun DeadlineCard(
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 InfoChip(
-                    label = if (daysLeft < 0) "Scaduta il" else "Scade il",
+                    label = stringResource(if (daysLeft < 0) R.string.deadline_overdue_label else R.string.deadline_due_label),
                     value = formatDate(deadline.dueDateEpochMs),
                     valueColor = urgencyColor, modifier = Modifier.weight(1f)
                 )
                 deadline.lastCostCents?.let { cents ->
-                    InfoChip(label = "Importo", value = "€${"%.2f".format(cents / 100.0)}",
+                    InfoChip(label = stringResource(R.string.field_amount), value = "€${"%.2f".format(cents / 100.0)}",
                         valueColor = AccentGreen, modifier = Modifier.weight(1f))
                 }
             }
@@ -136,11 +141,11 @@ fun DeadlineCard(
                             shape = RoundedCornerShape(10.dp),
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = TextSecondary),
                             border = ButtonDefaults.outlinedButtonBorder.copy()
-                        ) { Text("Annulla", fontSize = 13.sp) }
+                        ) { Text(stringResource(R.string.action_cancel), fontSize = 13.sp) }
                         Button(onClick = { onDelete(); deleteConfirm = false }, modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(10.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = DestructiveRed, contentColor = Color.White)
-                        ) { Text("Conferma", fontSize = 13.sp) }
+                        ) { Text(stringResource(R.string.action_confirm), fontSize = 13.sp) }
                     }
                 } else {
                     Button(onClick = { showMarkPaidDialog = true },
@@ -151,7 +156,7 @@ fun DeadlineCard(
                     ) {
                         Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(15.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Segna come pagata", fontWeight = FontWeight.Medium, fontSize = 13.sp)
+                        Text(stringResource(R.string.deadline_mark_paid), fontWeight = FontWeight.Medium, fontSize = 13.sp)
                     }
                 }
             }
@@ -192,8 +197,9 @@ fun DeadlineDialog(
         mutableStateOf(initialAmountCents?.let { "%.2f".format(it / 100.0) } ?: "")
     }
     var recExpanded  by remember { mutableStateOf(false) }
+    val options = reminderOptions()
     // Filtra subito i valori legacy non nei chip (es. 30)
-    val knownDays = REMINDER_OPTIONS.map { it.first }.toSet()
+    val knownDays = options.map { it.first }.toSet()
     var selectedDays by remember {
         mutableStateOf(csvToSet(initialReminderDaysCsv).filter { it in knownDays }.toSet())
     }
@@ -211,7 +217,7 @@ fun DeadlineDialog(
                 modifier = Modifier.verticalScroll(rememberScrollState())
             ) {
                 OutlinedTextField(value = category, onValueChange = { category = it },
-                    label = { Text("Categoria", color = TextSecondary) },
+                    label = { Text(stringResource(R.string.deadline_category_label), color = TextSecondary) },
                     singleLine = true, shape = RoundedCornerShape(12.dp),
                     colors = dialogFieldColors(), modifier = Modifier.fillMaxWidth())
 
@@ -229,7 +235,7 @@ fun DeadlineDialog(
                     colors = ButtonDefaults.outlinedButtonColors(
                         contentColor = if (selectedDate != null) AccentAmberLight else TextSecondary)
                 ) {
-                    Text(selectedDate?.let { "📅  ${formatDate(it)}" } ?: "Seleziona data", fontSize = 14.sp)
+                    Text(selectedDate?.let { "📅  ${formatDate(it)}" } ?: stringResource(R.string.deadline_select_date), fontSize = 14.sp)
                 }
 
                 @OptIn(ExperimentalMaterial3Api::class)
@@ -237,14 +243,14 @@ fun DeadlineDialog(
                     onExpandedChange = { recExpanded = !recExpanded },
                     modifier = Modifier.fillMaxWidth()) {
                     OutlinedTextField(value = recurrenceLabel(recurrence), onValueChange = {},
-                        readOnly = true, label = { Text("Ricorrenza", color = TextSecondary) },
+                        readOnly = true, label = { Text(stringResource(R.string.deadline_recurrence_label), color = TextSecondary) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(recExpanded) },
                         shape = RoundedCornerShape(12.dp), colors = dialogFieldColors(),
                         modifier = Modifier.menuAnchor().fillMaxWidth())
                     ExposedDropdownMenu(expanded = recExpanded,
                         onDismissRequest = { recExpanded = false },
                         modifier = Modifier.background(SurfaceElevated)) {
-                        recurrenceOptions.forEach { (v, l) ->
+                        recurrenceOptions().forEach { (v, l) ->
                             DropdownMenuItem(
                                 text = { Text(l, color = if (recurrence == v) AccentAmber else TextPrimary) },
                                 onClick = { recurrence = v; recExpanded = false })
@@ -256,12 +262,12 @@ fun DeadlineDialog(
 
                 // ── 4 chip su 2 righe (2+2) ──────────────────────────────────
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Notificami", color = TextSecondary, fontSize = 11.sp,
+                    Text(stringResource(R.string.deadline_notify_me), color = TextSecondary, fontSize = 11.sp,
                         fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                     // Prima riga: 14g e 7g
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.fillMaxWidth()) {
-                        REMINDER_OPTIONS.take(2).forEach { (days, label) ->
+                        options.take(2).forEach { (days, label) ->
                             ReminderChip(days = days, label = label,
                                 selected = days in selectedDays,
                                 onToggle = { selectedDays = if (days in selectedDays) selectedDays - days else selectedDays + days },
@@ -271,7 +277,7 @@ fun DeadlineDialog(
                     // Seconda riga: 1g e stesso giorno
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.fillMaxWidth()) {
-                        REMINDER_OPTIONS.drop(2).forEach { (days, label) ->
+                        options.drop(2).forEach { (days, label) ->
                             ReminderChip(days = days, label = label,
                                 selected = days in selectedDays,
                                 onToggle = { selectedDays = if (days in selectedDays) selectedDays - days else selectedDays + days },
@@ -284,8 +290,8 @@ fun DeadlineDialog(
 
                 OutlinedTextField(value = amountRaw,
                     onValueChange = { if (it.isEmpty() || it.matches(Regex("\\d{0,7}([.,]\\d{0,2})?"))) amountRaw = it },
-                    label = { Text("Importo (opzionale)", color = TextSecondary) },
-                    placeholder = { Text("es. 85.00", color = TextSecondary.copy(alpha = 0.5f)) },
+                    label = { Text(stringResource(R.string.field_amount_optional), color = TextSecondary) },
+                    placeholder = { Text(stringResource(R.string.deadline_amount_placeholder), color = TextSecondary.copy(alpha = 0.5f)) },
                     singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     leadingIcon = {
                         Text("€", color = if (amountRaw.isNotBlank()) AccentAmberLight else TextSecondary,
@@ -295,7 +301,7 @@ fun DeadlineDialog(
                     modifier = Modifier.fillMaxWidth())
 
                 OutlinedTextField(value = notes, onValueChange = { notes = it },
-                    label = { Text("Note (opzionale)", color = TextSecondary) },
+                    label = { Text(stringResource(R.string.field_notes_optional), color = TextSecondary) },
                     minLines = 2, maxLines = 4, shape = RoundedCornerShape(12.dp),
                     colors = dialogFieldColors(), modifier = Modifier.fillMaxWidth())
             }
@@ -314,12 +320,12 @@ fun DeadlineDialog(
                 colors = ButtonDefaults.buttonColors(containerColor = AccentAmber,
                     contentColor = Color(0xFF1A1100),
                     disabledContainerColor = AccentAmber.copy(alpha = 0.3f))
-            ) { Text("Salva", fontWeight = FontWeight.Bold) }
+            ) { Text(stringResource(R.string.action_save), fontWeight = FontWeight.Bold) }
         },
         dismissButton = {
             TextButton(onClick = onDismiss, shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.textButtonColors(contentColor = TextSecondary)
-            ) { Text("Annulla") }
+            ) { Text(stringResource(R.string.action_cancel)) }
         }
     )
 }

@@ -12,16 +12,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
-private val SurfaceDark    = Color(0xFF1A1A22)
-private val SurfaceElevated= Color(0xFF23232E)
-private val AccentAmber    = Color(0xFFE8A020)
-private val AccentAmberLight = Color(0xFFFFCA6A)
-private val TextPrimary    = Color(0xFFF0EEE8)
-private val TextSecondary  = Color(0xFF8A8898)
-private val DividerColor   = Color(0xFF2C2C3A)
+import com.example.rimembranze.R
+import com.example.rimembranze.ui.components.AccentAmber
+import com.example.rimembranze.ui.components.AccentAmberLight
+import com.example.rimembranze.ui.components.DividerColor
+import com.example.rimembranze.ui.components.SurfaceDark
+import com.example.rimembranze.ui.components.TextPrimary
+import com.example.rimembranze.ui.components.TextSecondary
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,7 +41,7 @@ fun MarkAsPaidDialog(
         tonalElevation = 0.dp,
         title = {
             Text(
-                "Conferma pagamento",
+                stringResource(R.string.mark_paid_title),
                 color = TextPrimary,
                 fontWeight = FontWeight.Bold,
                 fontSize = 20.sp
@@ -50,7 +50,7 @@ fun MarkAsPaidDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Text(
-                    "Inserisci l'importo pagato (opzionale).",
+                    stringResource(R.string.mark_paid_body),
                     color = TextSecondary,
                     fontSize = 14.sp
                 )
@@ -62,10 +62,10 @@ fun MarkAsPaidDialog(
                             amountRaw = raw
                         }
                     },
-                    label = { Text("Importo (€)", color = TextSecondary) },
+                    label = { Text(stringResource(R.string.field_amount_label), color = TextSecondary) },
                     placeholder = {
                         Text(
-                            prefilledCents?.let { "%.2f".format(it / 100.0) } ?: "es. 85.00",
+                            prefilledCents?.let { "%.2f".format(it / 100.0) } ?: stringResource(R.string.mark_paid_amount_placeholder),
                             color = TextSecondary.copy(alpha = 0.5f)
                         )
                     },
@@ -110,7 +110,7 @@ fun MarkAsPaidDialog(
                 Icon(Icons.Default.Check, contentDescription = null,
                     modifier = Modifier.size(15.dp))
                 Spacer(Modifier.width(6.dp))
-                Text("Segna pagata", fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.mark_paid_confirm), fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
@@ -118,7 +118,7 @@ fun MarkAsPaidDialog(
                 onClick = onDismiss,
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.textButtonColors(contentColor = TextSecondary)
-            ) { Text("Annulla") }
+            ) { Text(stringResource(R.string.action_cancel)) }
         }
     )
 }

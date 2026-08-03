@@ -21,22 +21,12 @@ section below has been implemented — it's a menu to pick from.
 | Only one Room migration defined, no fallback | `data/db/AppDatabase.kt` | Added `fallbackToDestructiveMigration(dropAllTables = true)` as a safety net, since the full schema history before `MIGRATION_2_3` isn't tracked. Any install still on an unhandled version now gets a clean (empty) database instead of crashing on every launch. Add explicit migrations here as the schema evolves further, rather than relying on this fallback long-term. |
 | CSV export escaping was minimal | `ui/vm/ItemDetailViewModel.kt` (`buildCsvContent`) | Previously only commas in the notes field were replaced; titles weren't escaped at all and newlines/quotes would produce malformed rows. Every field is now properly RFC4180-escaped (quoted + internal quotes doubled when it contains a comma, quote, or newline) via `csvEscape`/`csvRow` in `ui/vm/ItemDetailLogic.kt`. |
 | No test coverage for stats/recurrence logic | `ui/vm/ItemDetailLogic.kt`, `app/src/test/.../ItemDetailLogicTest.kt` | Extracted `computeItemStats` and `nextRecurrenceDate` out of `ItemDetailViewModel` into plain, Room-free functions and added JVM unit tests covering year-to-date spend, average session cost, recurrence rollover, and CSV escaping. |
+| Color palette duplication | `ui/MainScreen.kt`, `ui/MarkAsPaidDialog.kt`, `ui/AddRecordDialog.kt`, `ui/BatteryOptimizationHelper.kt` | These files each re-declared their own private copies of the same colors already defined once in `ui/components/SharedComponents.kt`. Removed the duplicates and imported the canonical ones instead (aliasing `DestructiveRed` as `AccentRed` in `MainScreen.kt` to avoid renaming every call site). No visual change — same hex values, one source of truth now. |
+| `FLAG_SECURE` unexplained | `MainActivity.kt` | Added a comment above the `window.setFlags(FLAG_SECURE, ...)` call explaining it's intentional (blocks screenshots/recents-preview for a privacy-sensitive app), not a bug. |
+| No localization path | `res/values/strings.xml`, every `ui/*.kt` and `notifications`/`worker` file | Every user-facing string (labels, buttons, dialog text, notification text, item-type/recurrence/reminder labels) is now a resource, referenced via `stringResource()` in Composables and `context.getString()` in the ViewModel/worker/scheduler code that isn't composable. `REMINDER_OPTIONS`/`recurrenceOptions`/`recurrenceLabel` in `SharedComponents.kt` became `@Composable` functions (were plain top-level `val`/`fun`) since building the list now requires a composition context. Left untouched, by design: the CSV export header/rows in `ItemDetailViewModel.buildCsvContent` (no Context available there without further plumbing) and the "Dom"/"ani" string-splitting trick in `SharedComponents.MancaInfoChip` (Italian-specific word-splitting logic, not translatable copy — it still works correctly because the resource strings it depends on are unchanged Italian text). |
 
 ## Known issues not fixed (backlog)
 
-- **Color palette duplication.** `BackgroundDark`, `SurfaceDark`, `AccentAmber`, etc. are defined
-  once in `ui/components/SharedComponents.kt` but re-declared locally (same hex values, different
-  `private val`s) in `MarkAsPaidDialog.kt` and `AddRecordDialog.kt`. Now that the real palette also
-  lives in `ui/theme/Color.kt` (see fixes above), there's a good opportunity to make every screen
-  read `MaterialTheme.colorScheme` and delete the duplicated constants — a larger, mechanical
-  refactor across ~6-8 files.
-- **No localization path.** `res/values/strings.xml` only contains `app_name`; every other string
-  in the app (all Italian) is hardcoded inline in Kotlin. Fine for a single-language personal app,
-  but blocks adding a second language later without a large find-and-replace.
-- **`FLAG_SECURE` is unconditional and unexplained.** Screenshots are always blocked and the app
-  preview is hidden in the recent-apps switcher, with no in-app explanation or way to disable it.
-  Reasonable for a privacy-sensitive app, but worth a one-line settings/about mention so it doesn't
-  look like a bug to a new user testing screenshots.
 - **Play Store listing icon.** `ic_launcher-playstore.png` (512×512) appears to have the same
   tight, edge-to-edge bleed as the old adaptive-icon foreground. It isn't used by the installed app
   (only by the Play Console listing), so it wasn't touched here (no image-editing tooling available
@@ -45,9 +35,11 @@ section below has been implemented — it's a menu to pick from.
 
 ## UI/UX improvement proposals (not implemented)
 
-- **Finish centralizing the theme.** Once screens read `MaterialTheme.colorScheme` instead of
-  hardcoded hex values (see backlog above), theming changes (e.g. an accent color tweak) become a
-  one-line change instead of a multi-file find-and-replace.
+- **Read colors from `MaterialTheme.colorScheme` instead of shared constants.** The palette
+  duplication is fixed (single source of truth in `ui/components/SharedComponents.kt`), but screens
+  still reference those constants directly rather than `MaterialTheme.colorScheme`. Moving to the
+  latter would make a future accent-color change a one-line edit instead of a multi-file
+  find-and-replace — a bigger, more mechanical refactor than the dedup done here.
 - **Decide on light mode.** Right now the app is dark-only regardless of the system setting; either
   embrace that explicitly (remove the now-unused light-theme machinery entirely, which this pass
   already simplified) or build a real light variant of the palette.
@@ -64,7 +56,7 @@ section below has been implemented — it's a menu to pick from.
   pulsing dot) could use a redundant cue for color-blind users.
 - **Bulk actions.** Deleting records/appointments is one-at-a-time with an inline confirm step.
   For someone cleaning up years of history, a multi-select + bulk delete would help.
-- **Localize via `strings.xml`.** Moving the hardcoded Italian strings into resources doesn't
-  change behavior today but removes the biggest blocker to ever supporting a second language.
+- **Add a second language.** With strings now in `strings.xml`, adding e.g. an English
+  `values-en/strings.xml` is a translation task, not a refactor.
 - **Google-account-linked sync.** The JSON backup format was chosen specifically so a future sync
   (e.g. Drive-backed) has a stable, structured base to build on without another format migration.

@@ -18,10 +18,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.rimembranze.R
 import com.example.rimembranze.data.db.AppointmentEntity
 import java.util.*
 
@@ -45,7 +47,7 @@ fun AppointmentDialog(
         shape = RoundedCornerShape(24.dp),
         containerColor = SurfaceDark,
         tonalElevation = 0.dp,
-        title = { Text("Nuovo appuntamento", color = TextPrimary,
+        title = { Text(stringResource(R.string.appointment_new_title), color = TextPrimary,
             fontWeight = FontWeight.Bold, fontSize = 20.sp) },
         text = {
             Column(
@@ -54,7 +56,7 @@ fun AppointmentDialog(
             ) {
                 OutlinedTextField(
                     value = title, onValueChange = { title = it },
-                    label = { Text("Titolo", color = TextSecondary) },
+                    label = { Text(stringResource(R.string.appointment_title_label), color = TextSecondary) },
                     singleLine = true, shape = RoundedCornerShape(12.dp),
                     colors = dialogFieldColors(), modifier = Modifier.fillMaxWidth()
                 )
@@ -76,7 +78,7 @@ fun AppointmentDialog(
                     colors = ButtonDefaults.outlinedButtonColors(
                         contentColor = if (selectedMs != null) AccentAmberLight else TextSecondary)
                 ) {
-                    Text(selectedMs?.let { "📅  ${formatDateTime(it)}" } ?: "Seleziona data e ora",
+                    Text(selectedMs?.let { "📅  ${formatDateTime(it)}" } ?: stringResource(R.string.appointment_select_datetime),
                         fontSize = 14.sp)
                 }
 
@@ -85,8 +87,8 @@ fun AppointmentDialog(
                 OutlinedTextField(
                     value = amountRaw,
                     onValueChange = { if (it.isEmpty() || it.matches(Regex("\\d{0,7}([.,]\\d{0,2})?"))) amountRaw = it },
-                    label = { Text("Importo (opzionale)", color = TextSecondary) },
-                    placeholder = { Text("es. 50.00", color = TextSecondary.copy(alpha = 0.5f)) },
+                    label = { Text(stringResource(R.string.field_amount_optional), color = TextSecondary) },
+                    placeholder = { Text(stringResource(R.string.appointment_amount_placeholder), color = TextSecondary.copy(alpha = 0.5f)) },
                     singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     leadingIcon = {
                         Text("€", color = if (amountRaw.isNotBlank()) AccentAmberLight else TextSecondary,
@@ -98,7 +100,7 @@ fun AppointmentDialog(
 
                 OutlinedTextField(
                     value = notes, onValueChange = { notes = it },
-                    label = { Text("Note (opzionale)", color = TextSecondary) },
+                    label = { Text(stringResource(R.string.field_notes_optional), color = TextSecondary) },
                     minLines = 2, maxLines = 4, shape = RoundedCornerShape(12.dp),
                     colors = dialogFieldColors(), modifier = Modifier.fillMaxWidth()
                 )
@@ -117,12 +119,12 @@ fun AppointmentDialog(
                 colors = ButtonDefaults.buttonColors(
                     containerColor = AccentBlue, contentColor = Color.White,
                     disabledContainerColor = AccentBlue.copy(alpha = 0.3f))
-            ) { Text("Salva", fontWeight = FontWeight.Bold) }
+            ) { Text(stringResource(R.string.action_save), fontWeight = FontWeight.Bold) }
         },
         dismissButton = {
             TextButton(onClick = onDismiss, shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.textButtonColors(contentColor = TextSecondary)
-            ) { Text("Annulla") }
+            ) { Text(stringResource(R.string.action_cancel)) }
         }
     )
 }
@@ -149,7 +151,7 @@ fun AppointmentDoneDialog(
         tonalElevation = 0.dp,
         icon = { Icon(Icons.Default.Check, contentDescription = null,
             tint = AccentBlue, modifier = Modifier.size(28.dp)) },
-        title = { Text("Seduta effettuata", color = TextPrimary,
+        title = { Text(stringResource(R.string.appointment_done_title), color = TextPrimary,
             fontWeight = FontWeight.Bold, fontSize = 20.sp) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -158,7 +160,7 @@ fun AppointmentDoneDialog(
                 OutlinedTextField(
                     value = amountRaw,
                     onValueChange = { if (it.isEmpty() || it.matches(Regex("\\d{0,7}([.,]\\d{0,2})?"))) amountRaw = it },
-                    label = { Text("Importo (opzionale)", color = TextSecondary) },
+                    label = { Text(stringResource(R.string.field_amount_optional), color = TextSecondary) },
                     singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     leadingIcon = {
                         Text("€", color = if (amountRaw.isNotBlank()) AccentAmberLight else TextSecondary,
@@ -169,7 +171,7 @@ fun AppointmentDoneDialog(
                 )
                 OutlinedTextField(
                     value = notes, onValueChange = { notes = it },
-                    label = { Text("Note (opzionale)", color = TextSecondary) },
+                    label = { Text(stringResource(R.string.field_notes_optional), color = TextSecondary) },
                     minLines = 2, maxLines = 4, shape = RoundedCornerShape(12.dp),
                     colors = dialogFieldColors(), modifier = Modifier.fillMaxWidth()
                 )
@@ -183,12 +185,12 @@ fun AppointmentDoneDialog(
                 },
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = AccentBlue, contentColor = Color.White)
-            ) { Text("Conferma", fontWeight = FontWeight.Bold) }
+            ) { Text(stringResource(R.string.action_confirm), fontWeight = FontWeight.Bold) }
         },
         dismissButton = {
             TextButton(onClick = onDismiss, shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.textButtonColors(contentColor = TextSecondary)
-            ) { Text("Annulla") }
+            ) { Text(stringResource(R.string.action_cancel)) }
         }
     )
 }
@@ -215,13 +217,13 @@ fun InvoiceDialog(
         shape = RoundedCornerShape(24.dp),
         containerColor = SurfaceDark,
         tonalElevation = 0.dp,
-        title = { Text("Crea fattura", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp) },
+        title = { Text(stringResource(R.string.appointment_invoice_title), color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp) },
         text = {
             Column(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
                 modifier = Modifier.verticalScroll(rememberScrollState())
             ) {
-                Text("Seleziona le sedute da includere:", color = TextSecondary, fontSize = 13.sp)
+                Text(stringResource(R.string.appointment_invoice_select_body), color = TextSecondary, fontSize = 13.sp)
 
                 appointments.forEach { a ->
                     val checked = a.id in selectedIds
@@ -255,7 +257,7 @@ fun InvoiceDialog(
                 if (totalCents > 0) {
                     HorizontalDivider(thickness = 0.5.dp, color = DividerColor)
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Totale (${selectedIds.size} sedute)", color = TextSecondary, fontSize = 13.sp)
+                        Text(stringResource(R.string.appointment_invoice_total, selectedIds.size), color = TextSecondary, fontSize = 13.sp)
                         Text("€${"%.2f".format(totalCents / 100.0)}", color = AccentGreen,
                             fontSize = 14.sp, fontWeight = FontWeight.Bold)
                     }
@@ -265,7 +267,7 @@ fun InvoiceDialog(
 
                 OutlinedTextField(
                     value = notes, onValueChange = { notes = it },
-                    label = { Text("Note fattura (opzionale)", color = TextSecondary) },
+                    label = { Text(stringResource(R.string.appointment_invoice_notes_label), color = TextSecondary) },
                     minLines = 2, maxLines = 3, shape = RoundedCornerShape(12.dp),
                     colors = dialogFieldColors(), modifier = Modifier.fillMaxWidth()
                 )
@@ -279,12 +281,12 @@ fun InvoiceDialog(
                 colors = ButtonDefaults.buttonColors(
                     containerColor = AccentGreen, contentColor = Color(0xFF0F0F13),
                     disabledContainerColor = AccentGreen.copy(alpha = 0.3f))
-            ) { Text("Crea fattura", fontWeight = FontWeight.Bold) }
+            ) { Text(stringResource(R.string.detail_create_invoice), fontWeight = FontWeight.Bold) }
         },
         dismissButton = {
             TextButton(onClick = onDismiss, shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.textButtonColors(contentColor = TextSecondary)
-            ) { Text("Annulla") }
+            ) { Text(stringResource(R.string.action_cancel)) }
         }
     )
 }

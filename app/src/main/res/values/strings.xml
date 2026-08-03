@@ -1,3 +1,171 @@
 <resources>
     <string name="app_name">Rimembranze</string>
+
+    <!-- Common actions, reused across dialogs -->
+    <string name="action_cancel">Annulla</string>
+    <string name="action_ok">OK</string>
+    <string name="action_save">Salva</string>
+    <string name="action_confirm">Conferma</string>
+    <string name="action_delete">Elimina</string>
+    <string name="field_notes_optional">Note (opzionale)</string>
+    <string name="field_amount_optional">Importo (opzionale)</string>
+    <string name="field_amount_label">Importo (€)</string>
+    <string name="field_amount">Importo</string>
+
+    <!-- Item types (ItemType enum labels) -->
+    <string name="item_type_veicoli">Veicoli</string>
+    <string name="item_type_palestra">Palestra</string>
+    <string name="item_type_medico">Medico</string>
+    <string name="item_type_altro">Altro</string>
+    <string name="item_type_all">Tutti</string>
+
+    <!-- MainScreen -->
+    <string name="main_backup_export_success">✓ Backup esportato con successo</string>
+    <string name="main_backup_export_failure">✗ Esportazione backup fallita</string>
+    <string name="main_backup_import_empty">✓ Backup importato — nessuna novità, era tutto già presente</string>
+    <string name="main_backup_import_summary">✓ Aggiunti: %1$d elementi, %2$d scadenze, %3$d pagamenti, %4$d appuntamenti (i doppioni già presenti sono stati saltati)</string>
+    <string name="main_backup_import_failure">✗ Importazione fallita: %1$s</string>
+    <string name="main_backup_file_unreadable">File non leggibile</string>
+    <string name="main_backup_import_generic_error">Importazione fallita</string>
+    <string name="main_import_backup_title">Importa backup</string>
+    <string name="main_import_backup_body">Gli elementi del file verranno aggiunti come nuovi. Nulla di già presente sul dispositivo verrà modificato o cancellato.</string>
+    <string name="main_import_backup_confirm">Importa</string>
+    <string name="main_backup_result_title">Backup</string>
+    <string name="main_open_menu">Apri menu</string>
+    <string name="main_search">Cerca</string>
+    <string name="main_search_off">Chiudi ricerca</string>
+    <string name="main_remove_filter">Rimuovi filtro</string>
+    <string name="main_search_placeholder">Cerca per nome o note…</string>
+    <string name="main_upcoming_header">PROSSIME SCADENZE</string>
+    <string name="main_no_upcoming">Nessuna scadenza nei prossimi 30 giorni</string>
+    <string name="main_expired_header">SCADUTI</string>
+    <string name="main_items_header">ELEMENTI</string>
+    <string name="main_add_item_desc">Aggiungi elemento</string>
+    <string name="main_new_item_title">Nuovo elemento</string>
+    <string name="main_field_name">Nome</string>
+    <string name="main_field_type">Tipo</string>
+    <string name="main_add">Aggiungi</string>
+    <string name="main_no_items_found">Nessun elemento trovato</string>
+    <string name="main_no_items_empty">Nessun elemento.\nAggiungine uno con il +</string>
+    <string name="main_items_total">%1$d elementi totali</string>
+    <string name="main_categories_header">CATEGORIE</string>
+    <string name="main_data_header">DATI</string>
+    <string name="main_export_backup">Esporta backup completo</string>
+    <string name="main_import_backup">Importa da backup</string>
+    <string name="main_expired_today">Scaduto oggi</string>
+    <string name="main_expired_yesterday">Scaduto ieri</string>
+    <string name="main_expired_days_ago">Scaduto da %1$d giorni</string>
+
+    <!-- ItemDetailScreen -->
+    <string name="detail_item_not_found">Item non trovato</string>
+    <string name="detail_back">Indietro</string>
+    <string name="detail_export_csv">Esporta CSV</string>
+    <string name="detail_delete">Elimina</string>
+    <string name="detail_paid_feedback">✓ Pagata — prossima scadenza: %1$s</string>
+    <string name="detail_csv_export_success">✓ CSV esportato con successo</string>
+    <string name="detail_csv_export_failure">✗ Esportazione CSV fallita</string>
+    <string name="detail_tab_deadlines">SCADENZE</string>
+    <string name="detail_tab_appointments">APPUNTAMENTI</string>
+    <string name="detail_no_deadlines">Nessuna scadenza registrata</string>
+    <string name="detail_payment_history_header">STORICO PAGAMENTI</string>
+    <string name="detail_no_records">Nessun pagamento registrato</string>
+    <string name="detail_upcoming_appointments_header">PROSSIMI</string>
+    <string name="detail_sort_descending">Ordine discendente</string>
+    <string name="detail_sort_ascending">Ordine ascendente</string>
+    <string name="detail_no_pending_appointments">Nessun appuntamento programmato</string>
+    <string name="detail_to_invoice_header">DA FATTURARE</string>
+    <string name="detail_unbilled_sessions">%1$d sedute non fatturate</string>
+    <string name="detail_total_amount">Totale: €%1$s</string>
+    <string name="detail_create_invoice">Crea fattura</string>
+    <string name="detail_history_header">STORICO SEDUTE</string>
+    <string name="detail_no_completed_appointments">Nessuna seduta completata</string>
+    <string name="detail_add_record">Aggiungi record</string>
+    <string name="detail_add_deadline">Aggiungi scadenza</string>
+    <string name="detail_add_appointment">Aggiungi appuntamento</string>
+    <string name="detail_new_deadline_title">Nuova scadenza</string>
+    <string name="detail_edit_deadline_title">Modifica scadenza</string>
+    <string name="detail_delete_item_title">Elimina item</string>
+    <string name="detail_delete_item_confirm_lead">Stai per eliminare</string>
+    <string name="detail_delete_item_body">Verranno eliminati anche scadenze, appuntamenti e storico. Operazione non reversibile.</string>
+    <string name="detail_delete_item_confirm">Elimina definitivamente</string>
+    <string name="detail_stat_this_year">Quest\'anno</string>
+    <string name="detail_stat_total_spent">Totale speso</string>
+    <string name="detail_stat_sessions">Sedute</string>
+    <string name="detail_stat_avg_session">Media seduta</string>
+
+    <!-- Shared: reminder / recurrence chips -->
+    <string name="reminder_14_days">14 giorni</string>
+    <string name="reminder_7_days">7 giorni</string>
+    <string name="reminder_1_day">1 giorno</string>
+    <string name="reminder_same_day">Stesso giorno</string>
+    <string name="recurrence_none">Nessuna</string>
+    <string name="recurrence_monthly">Mensile</string>
+    <string name="recurrence_quarterly">Trimestrale</string>
+    <string name="recurrence_semiannual">Semestrale</string>
+    <string name="recurrence_yearly">Annuale</string>
+    <string name="shared_date_label">Data</string>
+    <string name="shared_manca_label">Manca</string>
+
+    <!-- DeadlineCard / DeadlineDialog -->
+    <string name="deadline_edit_desc">Modifica</string>
+    <string name="deadline_due_label">Scade il</string>
+    <string name="deadline_overdue_label">Scaduta il</string>
+    <string name="deadline_reminder_same_day">stesso giorno</string>
+    <string name="deadline_reminder_1_day_before">1 giorno prima</string>
+    <string name="deadline_reminder_n_days_before">%1$d giorni prima</string>
+    <string name="deadline_mark_paid">Segna come pagata</string>
+    <string name="deadline_category_label">Categoria</string>
+    <string name="deadline_select_date">Seleziona data</string>
+    <string name="deadline_recurrence_label">Ricorrenza</string>
+    <string name="deadline_notify_me">Notificami</string>
+    <string name="deadline_amount_placeholder">es. 85.00</string>
+
+    <!-- AppointmentCard / AppointmentDialog -->
+    <string name="appointment_past">Passato</string>
+    <string name="appointment_in_hours">Tra %1$dh</string>
+    <string name="appointment_tomorrow">Domani</string>
+    <string name="appointment_in_days">Tra %1$dg</string>
+    <string name="appointment_mark_done">Segna come effettuato</string>
+    <string name="appointment_invoiced_badge">Fatturata</string>
+    <string name="appointment_new_title">Nuovo appuntamento</string>
+    <string name="appointment_title_label">Titolo</string>
+    <string name="appointment_select_datetime">Seleziona data e ora</string>
+    <string name="appointment_amount_placeholder">es. 50.00</string>
+    <string name="appointment_done_title">Seduta effettuata</string>
+    <string name="appointment_invoice_title">Crea fattura</string>
+    <string name="appointment_invoice_select_body">Seleziona le sedute da includere:</string>
+    <string name="appointment_invoice_total">Totale (%1$d sedute)</string>
+    <string name="appointment_invoice_notes_label">Note fattura (opzionale)</string>
+
+    <!-- RecordCard -->
+    <string name="record_unisalute_label">Rimborso UniSalute</string>
+    <string name="record_unisalute_status_pending">In attesa</string>
+    <string name="record_unisalute_status_approved">Approvato</string>
+    <string name="record_unisalute_status_rejected">Rifiutato</string>
+    <string name="record_unisalute_status_label">Stato rimborso</string>
+    <string name="record_unisalute_sent_on">Inviato il %1$s</string>
+
+    <!-- AddRecordDialog -->
+    <string name="add_record_title">Nuovo record</string>
+    <string name="add_record_amount_placeholder">es. 45.00</string>
+
+    <!-- MarkAsPaidDialog -->
+    <string name="mark_paid_title">Conferma pagamento</string>
+    <string name="mark_paid_body">Inserisci l\'importo pagato (opzionale).</string>
+    <string name="mark_paid_amount_placeholder">es. 85.00</string>
+    <string name="mark_paid_confirm">Segna pagata</string>
+
+    <!-- Battery optimization banner -->
+    <string name="battery_banner_title">Notifiche a rischio</string>
+    <string name="battery_banner_body">L\'ottimizzazione batteria potrebbe bloccare i promemoria. Disattivala per Rimembranze.</string>
+    <string name="battery_banner_fix">Risolvi</string>
+    <string name="battery_banner_dismiss">Ignora</string>
+
+    <!-- Notifications -->
+    <string name="notif_deadlines_channel">Scadenze</string>
+    <string name="notif_appointments_channel">Appuntamenti</string>
+    <string name="notif_deadline_due_today">Scade oggi!</string>
+    <string name="notif_deadline_due_tomorrow">Scade domani</string>
+    <string name="notif_deadline_due_in_days">Scade tra %1$d giorni</string>
+    <string name="notif_appointment_title">Appuntamento tra 1 ora</string>
 </resources>

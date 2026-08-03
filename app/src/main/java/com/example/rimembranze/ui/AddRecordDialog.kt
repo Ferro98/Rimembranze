@@ -1,13 +1,5 @@
 package com.example.rimembranze.ui
 
-// ════════════════════════════════════════════════════════════════════════════
-// FUNZIONALITÀ 1 — Aggiunta Record manuale
-//
-// 1. Aggiungi questo composable al file ItemDetailScreen.kt
-// 2. Aggiorna il FAB per mostrare due opzioni (scadenza / record)
-// 3. Chiama vm.addRecordAndReturnId(...) al salvataggio
-// ════════════════════════════════════════════════════════════════════════════
-
 import android.app.DatePickerDialog
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -21,11 +13,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.rimembranze.R
 import com.example.rimembranze.data.db.RecordType
+import com.example.rimembranze.ui.components.AccentAmber
+import com.example.rimembranze.ui.components.AccentAmberLight
+import com.example.rimembranze.ui.components.DividerColor
+import com.example.rimembranze.ui.components.SurfaceDark
+import com.example.rimembranze.ui.components.SurfaceElevated
+import com.example.rimembranze.ui.components.TextPrimary
+import com.example.rimembranze.ui.components.TextSecondary
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -49,15 +50,6 @@ fun AddRecordDialog(
     var typeExpanded  by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
-    // Colori inline (stessi del resto dell'app)
-    val SurfaceDark     = Color(0xFF1A1A22)
-    val SurfaceElevated = Color(0xFF23232E)
-    val AccentAmber     = Color(0xFFE8A020)
-    val AccentAmberLight= Color(0xFFFFCA6A)
-    val TextPrimary     = Color(0xFFF0EEE8)
-    val TextSecondary   = Color(0xFF8A8898)
-    val DividerColor    = Color(0xFF2C2C3A)
-
     val fieldColors = OutlinedTextFieldDefaults.colors(
         focusedBorderColor   = AccentAmber,
         unfocusedBorderColor = DividerColor,
@@ -80,7 +72,7 @@ fun AddRecordDialog(
         containerColor = SurfaceDark,
         tonalElevation = 0.dp,
         title = {
-            Text("Nuovo record", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+            Text(stringResource(R.string.add_record_title), color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp)
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -95,7 +87,7 @@ fun AddRecordDialog(
                         value = selectedType.name,
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Tipo", color = TextSecondary) },
+                        label = { Text(stringResource(R.string.main_field_type), color = TextSecondary) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(typeExpanded) },
                         leadingIcon = {
                             Box(
@@ -143,7 +135,7 @@ fun AddRecordDialog(
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
-                    label = { Text("Titolo", color = TextSecondary) },
+                    label = { Text(stringResource(R.string.appointment_title_label), color = TextSecondary) },
                     singleLine = true,
                     shape = RoundedCornerShape(12.dp),
                     colors = fieldColors,
@@ -177,7 +169,7 @@ fun AddRecordDialog(
                     Text(
                         selectedDate?.let {
                             "📅  ${SimpleDateFormat("dd/MM/yyyy", Locale.ITALY).format(Date(it))}"
-                        } ?: "Seleziona data",
+                        } ?: stringResource(R.string.deadline_select_date),
                         fontSize = 14.sp
                     )
                 }
@@ -191,8 +183,8 @@ fun AddRecordDialog(
                         if (raw.isEmpty() || raw.matches(Regex("\\d{0,7}([.,]\\d{0,2})?")))
                             amountRaw = raw
                     },
-                    label = { Text("Importo (opzionale)", color = TextSecondary) },
-                    placeholder = { Text("es. 45.00", color = TextSecondary.copy(alpha = 0.5f)) },
+                    label = { Text(stringResource(R.string.field_amount_optional), color = TextSecondary) },
+                    placeholder = { Text(stringResource(R.string.add_record_amount_placeholder), color = TextSecondary.copy(alpha = 0.5f)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     leadingIcon = {
@@ -210,7 +202,7 @@ fun AddRecordDialog(
                 OutlinedTextField(
                     value = notes,
                     onValueChange = { notes = it },
-                    label = { Text("Note (opzionale)", color = TextSecondary) },
+                    label = { Text(stringResource(R.string.field_notes_optional), color = TextSecondary) },
                     minLines = 2,
                     maxLines = 4,
                     shape = RoundedCornerShape(12.dp),
@@ -241,12 +233,12 @@ fun AddRecordDialog(
                     contentColor = Color(0xFF1A1100),
                     disabledContainerColor = AccentAmber.copy(alpha = 0.3f)
                 )
-            ) { Text("Salva", fontWeight = FontWeight.Bold) }
+            ) { Text(stringResource(R.string.action_save), fontWeight = FontWeight.Bold) }
         },
         dismissButton = {
             TextButton(onClick = onDismiss, shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.textButtonColors(contentColor = TextSecondary)
-            ) { Text("Annulla") }
+            ) { Text(stringResource(R.string.action_cancel)) }
         }
     )
 }

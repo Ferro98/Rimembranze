@@ -17,9 +17,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.rimembranze.R
+import com.example.rimembranze.ui.components.DestructiveRed
+import com.example.rimembranze.ui.components.TextPrimary
+import com.example.rimembranze.ui.components.TextSecondary
 
 fun Context.isBatteryOptimizationIgnored(): Boolean {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return true
@@ -35,10 +40,6 @@ fun BatteryOptimizationBanner() {
     if (dismissed) return
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
     if (context.isBatteryOptimizationIgnored()) return
-
-    val TextPrimary    = Color(0xFFF0EEE8)
-    val TextSecondary  = Color(0xFF8A8898)
-    val DestructiveRed = Color(0xFFE05858)
 
     Card(
         modifier = Modifier
@@ -63,14 +64,14 @@ fun BatteryOptimizationBanner() {
             )
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    "Notifiche a rischio",
+                    stringResource(R.string.battery_banner_title),
                     color = TextPrimary,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 14.sp
                 )
                 Spacer(Modifier.height(2.dp))
                 Text(
-                    "L'ottimizzazione batteria potrebbe bloccare i promemoria. Disattivala per Rimembranze.",
+                    stringResource(R.string.battery_banner_body),
                     color = TextSecondary,
                     fontSize = 12.sp,
                     lineHeight = 16.sp
@@ -93,7 +94,7 @@ fun BatteryOptimizationBanner() {
                         ),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                     ) {
-                        Text("Risolvi", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.battery_banner_fix), fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
                     TextButton(
                         onClick = { dismissed = true },
@@ -101,7 +102,7 @@ fun BatteryOptimizationBanner() {
                         colors = ButtonDefaults.textButtonColors(contentColor = TextSecondary),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                     ) {
-                        Text("Ignora", fontSize = 12.sp)
+                        Text(stringResource(R.string.battery_banner_dismiss), fontSize = 12.sp)
                     }
                 }
             }

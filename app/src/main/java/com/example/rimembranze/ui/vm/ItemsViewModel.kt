@@ -5,6 +5,7 @@ import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.rimembranze.R
 import com.example.rimembranze.data.backup.BackupManager
 import com.example.rimembranze.data.db.AppDatabase
 import com.example.rimembranze.data.db.ItemEntity
@@ -87,10 +88,10 @@ class ItemsViewModel(app: Application) : AndroidViewModel(app) {
             try {
                 val content = context.contentResolver.openInputStream(uri)
                     ?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
-                    ?: throw IllegalStateException("File non leggibile")
+                    ?: throw IllegalStateException(context.getString(R.string.main_backup_file_unreadable))
                 _backupImportResult.value = backupManager.importMerging(content)
             } catch (e: Exception) {
-                _backupImportError.value = e.message ?: "Importazione fallita"
+                _backupImportError.value = e.message ?: context.getString(R.string.main_backup_import_generic_error)
             }
         }
     }

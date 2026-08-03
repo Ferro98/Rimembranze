@@ -15,9 +15,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.rimembranze.R
 import com.example.rimembranze.data.db.AppointmentEntity
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -39,10 +41,10 @@ fun AppointmentCard(
     val daysLeft  = msLeft / (1000L * 60 * 60 * 24)
 
     val timeLabel = when {
-        msLeft < 0     -> "Passato"
-        hoursLeft < 24 -> "Tra ${hoursLeft}h"
-        daysLeft == 1L -> "Domani"
-        else           -> "Tra ${daysLeft}g"
+        msLeft < 0     -> stringResource(R.string.appointment_past)
+        hoursLeft < 24 -> stringResource(R.string.appointment_in_hours, hoursLeft)
+        daysLeft == 1L -> stringResource(R.string.appointment_tomorrow)
+        else           -> stringResource(R.string.appointment_in_days, daysLeft)
     }
     val urgencyColor = when {
         msLeft < 0     -> DestructiveRed
@@ -115,11 +117,11 @@ fun AppointmentCard(
                             shape = RoundedCornerShape(10.dp),
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = TextSecondary),
                             border = ButtonDefaults.outlinedButtonBorder.copy()
-                        ) { Text("Annulla", fontSize = 13.sp) }
+                        ) { Text(stringResource(R.string.action_cancel), fontSize = 13.sp) }
                         Button(onClick = { onDelete(); deleteConfirm = false }, modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(10.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = DestructiveRed, contentColor = Color.White)
-                        ) { Text("Conferma", fontSize = 13.sp) }
+                        ) { Text(stringResource(R.string.action_confirm), fontSize = 13.sp) }
                     }
                 } else {
                     Button(
@@ -132,7 +134,7 @@ fun AppointmentCard(
                     ) {
                         Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(15.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Segna come effettuato", fontWeight = FontWeight.Medium, fontSize = 13.sp)
+                        Text(stringResource(R.string.appointment_mark_done), fontWeight = FontWeight.Medium, fontSize = 13.sp)
                     }
                 }
             }
@@ -177,7 +179,7 @@ fun AppointmentDoneCard(
                     Box(modifier = Modifier.clip(RoundedCornerShape(6.dp))
                         .background(AccentGreen.copy(alpha = 0.15f))
                         .padding(horizontal = 8.dp, vertical = 3.dp)) {
-                        Text("Fatturata", color = AccentGreen, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.appointment_invoiced_badge), color = AccentGreen, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                     }
                     Spacer(Modifier.width(4.dp))
                 }
@@ -199,7 +201,7 @@ fun AppointmentDoneCard(
                 AppointmentInfoChip(epochMs = appointment.dateEpochMs,
                     modifier = Modifier.weight(1f))
                 appointment.amountCents?.let { cents ->
-                    InfoChip(label = "Importo", value = "€${"%.2f".format(cents / 100.0)}",
+                    InfoChip(label = stringResource(R.string.field_amount), value = "€${"%.2f".format(cents / 100.0)}",
                         valueColor = AccentGreen, modifier = Modifier.weight(1f).fillMaxHeight())
                 }
             }
@@ -219,11 +221,11 @@ fun AppointmentDoneCard(
                         shape = RoundedCornerShape(10.dp),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = TextSecondary),
                         border = ButtonDefaults.outlinedButtonBorder.copy()
-                    ) { Text("Annulla", fontSize = 13.sp) }
+                    ) { Text(stringResource(R.string.action_cancel), fontSize = 13.sp) }
                     Button(onClick = { onDelete(); deleteConfirm = false }, modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(10.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = DestructiveRed, contentColor = Color.White)
-                    ) { Text("Conferma", fontSize = 13.sp) }
+                    ) { Text(stringResource(R.string.action_confirm), fontSize = 13.sp) }
                 }
             }
         }

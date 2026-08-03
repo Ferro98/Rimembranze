@@ -24,11 +24,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.rimembranze.R
 import com.example.rimembranze.data.db.DeadlineEntity
 import com.example.rimembranze.notifications.AppointmentReminderScheduler
 import com.example.rimembranze.notifications.DeadlineReminderScheduler
@@ -113,10 +115,11 @@ fun ItemDetailScreen(
     }
 
     // Snackbar feedback pagamento ricorrente
+    val paidFeedbackTemplate = stringResource(R.string.detail_paid_feedback)
     LaunchedEffect(state.lastPaidNextDueDate) {
         val next = state.lastPaidNextDueDate ?: return@LaunchedEffect
         snackbarHost.showSnackbar(
-            message = "✓ Pagata — prossima scadenza: ${formatDate(next)}",
+            message = paidFeedbackTemplate.format(formatDate(next)),
             duration = SnackbarDuration.Short
         )
         vm.clearNextDueDateFeedback()
@@ -124,10 +127,12 @@ fun ItemDetailScreen(
 
     // Snackbar feedback esito export CSV
     val csvExportResult by vm.csvExportResult.collectAsState()
+    val csvExportSuccessMsg = stringResource(R.string.detail_csv_export_success)
+    val csvExportFailureMsg = stringResource(R.string.detail_csv_export_failure)
     LaunchedEffect(csvExportResult) {
         val success = csvExportResult ?: return@LaunchedEffect
         snackbarHost.showSnackbar(
-            message = if (success) "✓ CSV esportato con successo" else "✗ Esportazione CSV fallita",
+            message = if (success) csvExportSuccessMsg else csvExportFailureMsg,
             duration = SnackbarDuration.Short
         )
         vm.clearCsvExportResult()
@@ -162,7 +167,7 @@ fun ItemDetailScreen(
             when {
                 state.isLoading    -> CircularProgressIndicator(
                     modifier = Modifier.align(Alignment.Center), color = AccentAmber, strokeWidth = 2.dp)
-                state.item == null -> Text("Item non trovato", color = TextSecondary,
+                state.item == null -> Text(stringResource(R.string.detail_item_not_found), color = TextSecondary,
                     modifier = Modifier.align(Alignment.Center))
                 else -> {
                     val item             = state.item!!
@@ -187,7 +192,7 @@ fun ItemDetailScreen(
                                         verticalAlignment = Alignment.CenterVertically) {
                                         IconButton(onClick = onBack,
                                             modifier = Modifier.clip(CircleShape).background(SurfaceElevated).size(40.dp)) {
-                                            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Indietro",
+                                            Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.detail_back),
                                                 tint = TextPrimary, modifier = Modifier.size(18.dp))
                                         }
                                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -197,13 +202,13 @@ fun ItemDetailScreen(
                                                 csvLauncher.launch("${safeName}_export.csv")
                                             }, modifier = Modifier.clip(CircleShape)
                                                 .background(AccentAmber.copy(alpha = 0.12f)).size(40.dp)) {
-                                                Icon(Icons.Default.Share, "Esporta CSV",
+                                                Icon(Icons.Default.Share, stringResource(R.string.detail_export_csv),
                                                     tint = AccentAmber, modifier = Modifier.size(18.dp))
                                             }
                                             IconButton(onClick = { showDeleteItemDialog = true },
                                                 modifier = Modifier.clip(CircleShape)
                                                     .background(DestructiveRed.copy(alpha = 0.12f)).size(40.dp)) {
-                                                Icon(Icons.Default.Delete, "Elimina",
+                                                Icon(Icons.Default.Delete, stringResource(R.string.detail_delete),
                                                     tint = DestructiveRed, modifier = Modifier.size(18.dp))
                                             }
                                         }
@@ -234,10 +239,10 @@ fun ItemDetailScreen(
                             Row(modifier = Modifier.fillMaxWidth()
                                 .padding(horizontal = 16.dp, vertical = 12.dp),
                                 horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                TabCard(label = "SCADENZE", count = deadlineCount,
+                                TabCard(label = stringResource(R.string.detail_tab_deadlines), count = deadlineCount,
                                     active = activeTab == DetailTab.SCADENZE, color = AccentAmber,
                                     modifier = Modifier.weight(1f)) { activeTab = DetailTab.SCADENZE }
-                                TabCard(label = "APPUNTAMENTI", count = appointmentCount,
+                                TabCard(label = stringResource(R.string.detail_tab_appointments), count = appointmentCount,
                                     active = activeTab == DetailTab.APPUNTAMENTI, color = AccentBlue,
                                     modifier = Modifier.weight(1f)) { activeTab = DetailTab.APPUNTAMENTI }
                             }
@@ -245,9 +250,9 @@ fun ItemDetailScreen(
 
                         // ── Tab: Scadenze ─────────────────────────────────────
                         if (activeTab == DetailTab.SCADENZE) {
-                            item(key = "sec_scadenze") { SectionHeader("SCADENZE", state.deadlines.size) }
+                            item(key = "sec_scadenze") { SectionHeader(stringResource(R.string.detail_tab_deadlines), state.deadlines.size) }
                             if (state.deadlines.isEmpty()) {
-                                item(key = "empty_deadlines") { EmptyState("Nessuna scadenza registrata", "📅") }
+                                item(key = "empty_deadlines") { EmptyState(stringResource(R.string.detail_no_deadlines), "📅") }
                             } else {
                                 items(state.deadlines, key = { "dl_${it.id}" }) { d ->
                                     DeadlineCard(
@@ -271,9 +276,9 @@ fun ItemDetailScreen(
                                 }
                             }
                             item(key = "spacer_records") { Spacer(Modifier.height(10.dp)) }
-                            item(key = "sec_records") { SectionHeader("STORICO PAGAMENTI", state.records.size) }
+                            item(key = "sec_records") { SectionHeader(stringResource(R.string.detail_payment_history_header), state.records.size) }
                             if (state.records.isEmpty()) {
-                                item(key = "empty_records") { EmptyState("Nessun pagamento registrato", "💳") }
+                                item(key = "empty_records") { EmptyState(stringResource(R.string.detail_no_records), "💳") }
                             } else {
                                 items(state.records, key = { "rec_${it.id}" }) { r ->
                                     RecordCard(record = r, onDelete = { vm.deleteRecord(r) },
@@ -287,14 +292,14 @@ fun ItemDetailScreen(
                             item(key = "sec_pending") {
                                 Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
                                     verticalAlignment = Alignment.CenterVertically) {
-                                    Text("PROSSIMI", color = TextSecondary, fontSize = 11.sp,
+                                    Text(stringResource(R.string.detail_upcoming_appointments_header), color = TextSecondary, fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold, letterSpacing = 2.sp, modifier = Modifier.weight(1f))
                                     Text("${state.appointmentsPending.size}", color = AccentBlue,
                                         fontSize = 11.sp, fontWeight = FontWeight.Bold)
                                     Spacer(Modifier.width(12.dp))
                                     IconButton(onClick = { vm.toggleAppointmentsOrder() }, modifier = Modifier.size(28.dp)) {
                                         Icon(Icons.AutoMirrored.Filled.Sort,
-                                            contentDescription = if (state.appointmentsAscending) "Ordine discendente" else "Ordine ascendente",
+                                            contentDescription = stringResource(if (state.appointmentsAscending) R.string.detail_sort_descending else R.string.detail_sort_ascending),
                                             tint = AccentBlue, modifier = Modifier.size(16.dp))
                                     }
                                     Text(if (state.appointmentsAscending) "↑" else "↓",
@@ -303,7 +308,7 @@ fun ItemDetailScreen(
                                 HorizontalDivider(color = DividerColor, thickness = 0.5.dp)
                             }
                             if (state.appointmentsPending.isEmpty()) {
-                                item(key = "empty_pending") { EmptyState("Nessun appuntamento programmato", "🗓") }
+                                item(key = "empty_pending") { EmptyState(stringResource(R.string.detail_no_pending_appointments), "🗓") }
                             } else {
                                 items(state.appointmentsPending, key = { "appt_${it.id}" }) { a ->
                                     AppointmentCard(
@@ -326,7 +331,7 @@ fun ItemDetailScreen(
                                 item(key = "sec_donenotpaid") {
                                     Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
                                         verticalAlignment = Alignment.CenterVertically) {
-                                        Text("DA FATTURARE", color = AccentGreen, fontSize = 11.sp,
+                                        Text(stringResource(R.string.detail_to_invoice_header), color = AccentGreen, fontSize = 11.sp,
                                             fontWeight = FontWeight.Bold, letterSpacing = 2.sp, modifier = Modifier.weight(1f))
                                         Text("${state.appointmentsDoneNotPaid.size}", color = AccentGreen,
                                             fontSize = 11.sp, fontWeight = FontWeight.Bold)
@@ -345,9 +350,9 @@ fun ItemDetailScreen(
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                         Column(modifier = Modifier.weight(1f)) {
-                                            Text("${state.appointmentsDoneNotPaid.size} sedute non fatturate",
+                                            Text(stringResource(R.string.detail_unbilled_sessions, state.appointmentsDoneNotPaid.size),
                                                 color = TextSecondary, fontSize = 12.sp)
-                                            if (total > 0) Text("Totale: €${"%.2f".format(total / 100.0)}",
+                                            if (total > 0) Text(stringResource(R.string.detail_total_amount, "%.2f".format(total / 100.0)),
                                                 color = AccentGreen, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                                         }
                                         Button(onClick = { showInvoiceDialog = true }, shape = RoundedCornerShape(10.dp),
@@ -356,16 +361,16 @@ fun ItemDetailScreen(
                                             elevation = ButtonDefaults.buttonElevation(0.dp)) {
                                             Icon(Icons.Default.Receipt, null, modifier = Modifier.size(15.dp))
                                             Spacer(Modifier.width(6.dp))
-                                            Text("Crea fattura", fontWeight = FontWeight.Medium, fontSize = 13.sp)
+                                            Text(stringResource(R.string.detail_create_invoice), fontWeight = FontWeight.Medium, fontSize = 13.sp)
                                         }
                                     }
                                 }
                             }
 
                             item(key = "spacer_history") { Spacer(Modifier.height(10.dp)) }
-                            item(key = "sec_history") { SectionHeader("STORICO SEDUTE", state.appointmentsPaid.size, AccentBlue) }
+                            item(key = "sec_history") { SectionHeader(stringResource(R.string.detail_history_header), state.appointmentsPaid.size, AccentBlue) }
                             if (state.appointmentsPaid.isEmpty()) {
-                                item(key = "empty_history") { EmptyState("Nessuna seduta completata", "✓") }
+                                item(key = "empty_history") { EmptyState(stringResource(R.string.detail_no_completed_appointments), "✓") }
                             } else {
                                 items(state.appointmentsPaid, key = { "apptpaid_${it.id}" }) { a ->
                                     AppointmentDoneCard(appointment = a, showPaidBadge = true, onDelete = {
@@ -387,12 +392,12 @@ fun ItemDetailScreen(
                             Column(verticalArrangement = Arrangement.spacedBy(12.dp),
                                 horizontalAlignment = Alignment.End) {
                                 if (activeTab == DetailTab.SCADENZE) {
-                                    FabOption("Aggiungi record", AccentGreen, Icons.Default.Receipt) {
+                                    FabOption(stringResource(R.string.detail_add_record), AccentGreen, Icons.Default.Receipt) {
                                         showAddRecordDialog = true; fabExpanded = false }
-                                    FabOption("Aggiungi scadenza", AccentAmber, Icons.Default.CalendarMonth) {
+                                    FabOption(stringResource(R.string.detail_add_deadline), AccentAmber, Icons.Default.CalendarMonth) {
                                         showAddDeadlineDialog = true; fabExpanded = false }
                                 } else {
-                                    FabOption("Aggiungi appuntamento", AccentBlue, Icons.Default.EventAvailable) {
+                                    FabOption(stringResource(R.string.detail_add_appointment), AccentBlue, Icons.Default.EventAvailable) {
                                         showAddAppointmentDialog = true; fabExpanded = false }
                                 }
                             }
@@ -417,7 +422,7 @@ fun ItemDetailScreen(
     // ── Dialogs ───────────────────────────────────────────────────────────────
 
     if (showAddDeadlineDialog) {
-        DeadlineDialog(title = "Nuova scadenza", onDismiss = { showAddDeadlineDialog = false },
+        DeadlineDialog(title = stringResource(R.string.detail_new_deadline_title), onDismiss = { showAddDeadlineDialog = false },
             onSave = { cat, dateMs, rec, notes, cents, csv ->
                 scope.launch {
                     val id = vm.addDeadlineAndReturnId(itemId, cat, dateMs, rec, notes, cents, csv)
@@ -428,7 +433,7 @@ fun ItemDetailScreen(
     }
 
     editingDeadline?.let { d ->
-        DeadlineDialog(title = "Modifica scadenza", initialCategory = d.category,
+        DeadlineDialog(title = stringResource(R.string.detail_edit_deadline_title), initialCategory = d.category,
             initialDateEpochMs = d.dueDateEpochMs, initialRecurrence = d.recurrence,
             initialNotes = d.notes, initialAmountCents = d.lastCostCents,
             initialReminderDaysCsv = d.reminderDaysCsv,
@@ -478,16 +483,16 @@ fun ItemDetailScreen(
                 onDismissRequest = { showDeleteItemDialog = false },
                 shape = RoundedCornerShape(24.dp), containerColor = SurfaceDark, tonalElevation = 0.dp,
                 icon = { Icon(Icons.Default.Warning, null, tint = DestructiveRed, modifier = Modifier.size(32.dp)) },
-                title = { Text("Elimina item", color = TextPrimary, fontWeight = FontWeight.Bold,
+                title = { Text(stringResource(R.string.detail_delete_item_title), color = TextPrimary, fontWeight = FontWeight.Bold,
                     fontSize = 20.sp, textAlign = TextAlign.Center) },
                 text = {
                     Column(horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Stai per eliminare", color = TextSecondary, fontSize = 14.sp, textAlign = TextAlign.Center)
+                        Text(stringResource(R.string.detail_delete_item_confirm_lead), color = TextSecondary, fontSize = 14.sp, textAlign = TextAlign.Center)
                         Text("\"${it.name}\"", color = TextPrimary, fontWeight = FontWeight.SemiBold,
                             fontSize = 16.sp, textAlign = TextAlign.Center)
                         Spacer(Modifier.height(4.dp))
-                        Text("Verranno eliminati anche scadenze, appuntamenti e storico. Operazione non reversibile.",
+                        Text(stringResource(R.string.detail_delete_item_body),
                             color = TextSecondary, fontSize = 13.sp, textAlign = TextAlign.Center, lineHeight = 18.sp)
                     }
                 },
@@ -496,14 +501,14 @@ fun ItemDetailScreen(
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = DestructiveRed, contentColor = Color.White),
                         modifier = Modifier.fillMaxWidth()
-                    ) { Text("Elimina definitivamente", fontWeight = FontWeight.Bold) }
+                    ) { Text(stringResource(R.string.detail_delete_item_confirm), fontWeight = FontWeight.Bold) }
                 },
                 dismissButton = {
                     TextButton(onClick = { showDeleteItemDialog = false },
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.textButtonColors(contentColor = TextSecondary),
                         modifier = Modifier.fillMaxWidth()
-                    ) { Text("Annulla") }
+                    ) { Text(stringResource(R.string.action_cancel)) }
                 }
             )
         }
@@ -524,7 +529,7 @@ private fun StatsStrip(stats: ItemStats) {
     ) {
         if (stats.totalSpentThisYearCents > 0L) {
             StatChip(
-                label = "Quest'anno",
+                label = stringResource(R.string.detail_stat_this_year),
                 value = "€${"%.0f".format(stats.totalSpentThisYearCents / 100.0)}",
                 color = AccentAmber,
                 modifier = Modifier.weight(1f)
@@ -532,7 +537,7 @@ private fun StatsStrip(stats: ItemStats) {
         }
         if (stats.totalSpentCents > 0L) {
             StatChip(
-                label = "Totale speso",
+                label = stringResource(R.string.detail_stat_total_spent),
                 value = "€${"%.0f".format(stats.totalSpentCents / 100.0)}",
                 color = AccentAmberLight,
                 modifier = Modifier.weight(1f)
@@ -540,7 +545,7 @@ private fun StatsStrip(stats: ItemStats) {
         }
         if (stats.completedAppointments > 0) {
             StatChip(
-                label = "Sedute",
+                label = stringResource(R.string.detail_stat_sessions),
                 value = "${stats.completedAppointments}",
                 color = AccentBlue,
                 modifier = Modifier.weight(1f)
@@ -548,7 +553,7 @@ private fun StatsStrip(stats: ItemStats) {
         }
         if (stats.avgAppointmentCents != null) {
             StatChip(
-                label = "Media seduta",
+                label = stringResource(R.string.detail_stat_avg_session),
                 value = "€${"%.0f".format(stats.avgAppointmentCents / 100.0)}",
                 color = AccentGreen,
                 modifier = Modifier.weight(1f)

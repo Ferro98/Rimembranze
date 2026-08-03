@@ -28,9 +28,9 @@ class DeadlineOneShotWorker(
             .getById(deadlineId) ?: return Result.success()
 
         val bodyText = when {
-            daysLeft == 0 -> "Scade oggi!"
-            daysLeft == 1 -> "Scade domani"
-            else          -> "Scade tra $daysLeft giorni"
+            daysLeft == 0 -> applicationContext.getString(R.string.notif_deadline_due_today)
+            daysLeft == 1 -> applicationContext.getString(R.string.notif_deadline_due_tomorrow)
+            else          -> applicationContext.getString(R.string.notif_deadline_due_in_days, daysLeft)
         }
 
         // Intent che apre MainActivity portando direttamente alla deadline
@@ -68,7 +68,7 @@ class DeadlineOneShotWorker(
                 as NotificationManager
 
         nm.createNotificationChannel(
-            NotificationChannel(channelId, "Scadenze", NotificationManager.IMPORTANCE_DEFAULT)
+            NotificationChannel(channelId, applicationContext.getString(R.string.notif_deadlines_channel), NotificationManager.IMPORTANCE_DEFAULT)
         )
 
         nm.notify(
