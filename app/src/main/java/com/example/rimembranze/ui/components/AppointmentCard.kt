@@ -158,24 +158,39 @@ fun AppointmentCard(
 fun AppointmentDoneCard(
     appointment: AppointmentEntity,
     showPaidBadge: Boolean = false,
-    onDelete: (() -> Unit)? = null
+    onDelete: (() -> Unit)? = null,
+    selectionMode: Boolean = false,
+    isSelected: Boolean = false,
+    onToggleSelect: (() -> Unit)? = null
 ) {
     var deleteConfirm by remember { mutableStateOf(false) }
 
     Card(
+        onClick = { if (selectionMode) onToggleSelect?.invoke() },
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfaceDark),
+        colors = CardDefaults.cardColors(
+            containerColor = if (selectionMode && isSelected) AccentBlue.copy(alpha = 0.08f) else SurfaceDark
+        ),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(modifier = Modifier.size(8.dp).clip(CircleShape)
-                    .background(if (showPaidBadge) AccentGreen else AccentBlue))
-                Spacer(Modifier.width(10.dp))
+                if (selectionMode) {
+                    Checkbox(
+                        checked = isSelected,
+                        onCheckedChange = { onToggleSelect?.invoke() },
+                        colors = CheckboxDefaults.colors(checkedColor = AccentBlue, uncheckedColor = TextSecondary)
+                    )
+                    Spacer(Modifier.width(4.dp))
+                } else {
+                    Box(modifier = Modifier.size(8.dp).clip(CircleShape)
+                        .background(if (showPaidBadge) AccentGreen else AccentBlue))
+                    Spacer(Modifier.width(10.dp))
+                }
                 Text(appointment.title, color = TextPrimary, fontWeight = FontWeight.SemiBold,
                     fontSize = 15.sp, modifier = Modifier.weight(1f))
-                if (showPaidBadge) {
+                if (showPaidBadge && !selectionMode) {
                     Box(modifier = Modifier.clip(RoundedCornerShape(6.dp))
                         .background(AccentGreen.copy(alpha = 0.15f))
                         .padding(horizontal = 8.dp, vertical = 3.dp)) {
@@ -183,7 +198,7 @@ fun AppointmentDoneCard(
                     }
                     Spacer(Modifier.width(4.dp))
                 }
-                if (onDelete != null) {
+                if (onDelete != null && !selectionMode) {
                     IconButton(onClick = { deleteConfirm = true }, modifier = Modifier.size(32.dp)) {
                         Icon(Icons.Default.Delete, contentDescription = null,
                             tint = if (deleteConfirm) DestructiveRed else TextSecondary,

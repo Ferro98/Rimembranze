@@ -8,6 +8,8 @@ import androidx.lifecycle.viewModelScope
 import com.example.rimembranze.R
 import com.example.rimembranze.data.backup.BackupManager
 import com.example.rimembranze.data.db.AppDatabase
+import com.example.rimembranze.data.db.AppointmentEntity
+import com.example.rimembranze.data.db.DeadlineEntity
 import com.example.rimembranze.data.db.ItemEntity
 import com.example.rimembranze.data.db.ItemType
 import com.example.rimembranze.data.repository.ItemRepository
@@ -15,12 +17,15 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 data class ItemsUiState(
-    val items: List<ItemEntity> = emptyList()
+    val items: List<ItemEntity> = emptyList(),
+    // Snapshot completo di scadenze/appuntamenti di tutti gli item, usato solo per la ricerca
+    val deadlines: List<DeadlineEntity> = emptyList(),
+    val appointments: List<AppointmentEntity> = emptyList()
 )
 
 class ItemsViewModel(app: Application) : AndroidViewModel(app) {
@@ -29,13 +34,17 @@ class ItemsViewModel(app: Application) : AndroidViewModel(app) {
     private val repo = ItemRepository(db.itemDao())
     private val backupManager = BackupManager(db)
 
-    val uiState: StateFlow<ItemsUiState> = repo.observeItems()
-        .map { ItemsUiState(items = it) }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = ItemsUiState()
-        )
+    val uiState: StateFlow<ItemsUiState> = combine(
+        repo.observeItems(),
+        db.deadlineDao().observeAll(),
+        db.appointmentDao().observeAll()
+    ) { items, deadlines, appointments ->
+        ItemsUiState(items = items, deadlines = deadlines, appointments = appointments)
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = ItemsUiState()
+    )
 
     fun addItem(name: String, type: ItemType, notes: String? = null) {
         val trimmed = name.trim()
