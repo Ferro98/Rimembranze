@@ -13,6 +13,10 @@ interface ItemDao {
     @Query("SELECT * FROM items ORDER BY createdAtEpochMs DESC")
     fun observeAll(): Flow<List<ItemEntity>>
 
+    // Snapshot one-shot per l'export/import del backup completo
+    @Query("SELECT * FROM items")
+    suspend fun getAllOnce(): List<ItemEntity>
+
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(item: ItemEntity): Long
 

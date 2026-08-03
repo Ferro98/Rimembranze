@@ -13,6 +13,10 @@ interface DeadlineDao {
     @Query("SELECT * FROM deadlines WHERE itemId = :itemId ORDER BY dueDateEpochMs ASC")
     fun observeByItem(itemId: Long): Flow<List<DeadlineEntity>>
 
+    // Snapshot one-shot per l'export/import del backup completo
+    @Query("SELECT * FROM deadlines")
+    suspend fun getAllOnce(): List<DeadlineEntity>
+
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(deadline: DeadlineEntity): Long
 

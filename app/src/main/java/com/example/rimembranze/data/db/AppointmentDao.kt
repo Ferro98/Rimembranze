@@ -10,6 +10,10 @@ interface AppointmentDao {
     @Query("SELECT * FROM appointments WHERE itemId = :itemId ORDER BY dateEpochMs ASC")
     fun observeByItem(itemId: Long): Flow<List<AppointmentEntity>>
 
+    // Snapshot one-shot per l'export/import del backup completo
+    @Query("SELECT * FROM appointments")
+    suspend fun getAllOnce(): List<AppointmentEntity>
+
     // Appuntamenti futuri (non ancora effettuati)
     @Query("""
         SELECT * FROM appointments

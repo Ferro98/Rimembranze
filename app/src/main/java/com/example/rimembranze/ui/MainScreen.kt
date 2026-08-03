@@ -1,5 +1,8 @@
 package com.example.rimembranze.ui
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -21,6 +24,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -81,8 +85,44 @@ fun MainScreen(
     val upcoming by dashboardVm.upcoming.collectAsState()
     val expired  by dashboardVm.expired.collectAsState()
 
+    val context = LocalContext.current
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+
+    // ── Backup completo (JSON): export/import ────────────────────────────────
+    val exportBackupLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/json")
+    ) { uri -> if (uri != null) vm.exportBackupJson(context, uri) }
+
+    var pendingImportUri by remember { mutableStateOf<Uri?>(null) }
+    val importBackupLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri -> if (uri != null) pendingImportUri = uri }
+
+    val backupExportResult by vm.backupExportResult.collectAsState()
+    val backupImportResult by vm.backupImportResult.collectAsState()
+    val backupImportError   by vm.backupImportError.collectAsState()
+    var backupMessage by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(backupExportResult) {
+        backupExportResult?.let {
+            backupMessage = if (it) "✓ Backup esportato con successo" else "✗ Esportazione backup fallita"
+            vm.clearBackupFeedback()
+        }
+    }
+    LaunchedEffect(backupImportResult) {
+        backupImportResult?.let { r ->
+            backupMessage = "✓ Importati: ${r.items} elementi, ${r.deadlines} scadenze, " +
+                    "${r.records} pagamenti, ${r.appointments} appuntamenti"
+            vm.clearBackupFeedback()
+        }
+    }
+    LaunchedEffect(backupImportError) {
+        backupImportError?.let {
+            backupMessage = "✗ Importazione fallita: $it"
+            vm.clearBackupFeedback()
+        }
+    }
 
     var filterType         by remember { mutableStateOf<ItemType?>(null) }
     var newName            by remember { mutableStateOf("") }
@@ -152,9 +192,60 @@ fun MainScreen(
                         newName = ""
                         showAddSheet = false
                     }
-                }
+                },
+                onExportBackup   = {
+                    val fname = "rimembranze_backup_${
+                        SimpleDateFormat("yyyyMMdd", Locale.ITALY).format(Date())
+                    }.json"
+                    exportBackupLauncher.launch(fname)
+                },
+                onImportBackup   = { importBackupLauncher.launch(arrayOf("application/json")) }
             )
         }
+    }
+
+    // ── Conferma import backup ────────────────────────────────────────────────
+    pendingImportUri?.let { uri ->
+        AlertDialog(
+            onDismissRequest = { pendingImportUri = null },
+            shape = RoundedCornerShape(24.dp), containerColor = SurfaceDark, tonalElevation = 0.dp,
+            icon = { Icon(Icons.Default.Restore, null, tint = AccentAmber, modifier = Modifier.size(28.dp)) },
+            title = { Text("Importa backup", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp) },
+            text = {
+                Text(
+                    "Gli elementi del file verranno aggiunti come nuovi. Nulla di già presente sul dispositivo verrà modificato o cancellato.",
+                    color = TextSecondary, fontSize = 14.sp, lineHeight = 20.sp
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = { vm.importBackupJson(context, uri); pendingImportUri = null },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = AccentAmber, contentColor = Color(0xFF1A1100))
+                ) { Text("Importa", fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingImportUri = null }, shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.textButtonColors(contentColor = TextSecondary)
+                ) { Text("Annulla") }
+            }
+        )
+    }
+
+    // ── Esito export/import backup ───────────────────────────────────────────
+    backupMessage?.let { msg ->
+        AlertDialog(
+            onDismissRequest = { backupMessage = null },
+            shape = RoundedCornerShape(24.dp), containerColor = SurfaceDark, tonalElevation = 0.dp,
+            title = { Text("Backup", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp) },
+            text = { Text(msg, color = TextSecondary, fontSize = 14.sp, lineHeight = 20.sp) },
+            confirmButton = {
+                Button(
+                    onClick = { backupMessage = null }, shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = AccentAmber, contentColor = Color(0xFF1A1100))
+                ) { Text("OK", fontWeight = FontWeight.Bold) }
+            }
+        )
     }
 }
 
@@ -187,7 +278,9 @@ private fun MainList(
     onNewName: (String) -> Unit,
     onSelectedType: (ItemType) -> Unit,
     onTypeMenu: (Boolean) -> Unit,
-    onAddItem: () -> Unit
+    onAddItem: () -> Unit,
+    onExportBackup: () -> Unit,
+    onImportBackup: () -> Unit
 ) {
     val urgentByItem: Map<Long, Int> = remember(upcoming, expired) {
         val map = mutableMapOf<Long, Int>()
@@ -218,7 +311,9 @@ private fun MainList(
                 selectedType   = filterType,
                 itemCounts     = state.items.groupBy { it.type }.mapValues { it.value.size },
                 totalCount     = state.items.size,
-                onSelect       = { type -> onFilterType(type); scope.launch { drawerState.close() } }
+                onSelect       = { type -> onFilterType(type); scope.launch { drawerState.close() } },
+                onExportBackup = { scope.launch { drawerState.close() }; onExportBackup() },
+                onImportBackup = { scope.launch { drawerState.close() }; onImportBackup() }
             )
         },
         scrimColor = Color.Black.copy(alpha = 0.55f)
@@ -503,7 +598,8 @@ private fun MainEmptyState(isFiltered: Boolean) {
 @Composable
 private fun NavigationDrawerContent(
     availableTypes: List<ItemType?>, selectedType: ItemType?,
-    itemCounts: Map<ItemType, Int>, totalCount: Int, onSelect: (ItemType?) -> Unit
+    itemCounts: Map<ItemType, Int>, totalCount: Int, onSelect: (ItemType?) -> Unit,
+    onExportBackup: () -> Unit, onImportBackup: () -> Unit
 ) {
     ModalDrawerSheet(drawerShape = RoundedCornerShape(topEnd = 28.dp, bottomEnd = 28.dp),
         drawerContainerColor = DrawerBackground, drawerTonalElevation = 0.dp,
@@ -535,6 +631,15 @@ private fun NavigationDrawerContent(
             DrawerItem(icon = typeIcon(type), label = typeLabel(type), count = itemCounts[type] ?: 0,
                 color = typeColor(type), isSelected = selectedType == type, onClick = { onSelect(type) })
         }
+        Spacer(Modifier.height(4.dp))
+        HorizontalDivider(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+            thickness = 0.5.dp, color = DividerColor)
+        Text("DATI", color = TextSecondary, fontSize = 10.sp, fontWeight = FontWeight.Bold,
+            letterSpacing = 2.sp, modifier = Modifier.padding(start = 24.dp, bottom = 8.dp))
+        DrawerItem(icon = Icons.Default.Backup, label = "Esporta backup completo", count = 0,
+            color = AccentAmber, isSelected = false, onClick = onExportBackup)
+        DrawerItem(icon = Icons.Default.Restore, label = "Importa da backup", count = 0,
+            color = AccentAmber, isSelected = false, onClick = onImportBackup)
     }
 }
 
