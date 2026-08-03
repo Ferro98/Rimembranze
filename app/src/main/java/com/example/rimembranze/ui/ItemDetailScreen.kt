@@ -1,6 +1,8 @@
 package com.example.rimembranze.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -32,6 +34,7 @@ import com.example.rimembranze.notifications.AppointmentReminderScheduler
 import com.example.rimembranze.notifications.DeadlineReminderScheduler
 import com.example.rimembranze.ui.components.*
 import com.example.rimembranze.ui.vm.ItemDetailViewModel
+import com.example.rimembranze.ui.vm.ItemStats
 import kotlinx.coroutines.launch
 
 private enum class DetailTab { SCADENZE, APPUNTAMENTI }
@@ -47,8 +50,21 @@ fun ItemDetailScreen(
     val vm: ItemDetailViewModel = viewModel()
     val state by remember(itemId) { vm.observe(itemId) }.collectAsState()
 
-    val context = LocalContext.current
-    val scope   = rememberCoroutineScope()
+    val context      = LocalContext.current
+    val scope        = rememberCoroutineScope()
+    val snackbarHost = remember { SnackbarHostState() }
+
+    // Launcher per ACTION_CREATE_DOCUMENT — salva CSV nella posizione scelta dall'utente
+    val csvLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("text/csv")
+    ) { uri ->
+        if (uri != null) {
+            val allAppointments = state.appointmentsPending +
+                    state.appointmentsDoneNotPaid + state.appointmentsPaid
+            val csvContent = vm.buildCsvContent(state.records, allAppointments)
+            vm.writeCsvToUri(context, uri, csvContent)
+        }
+    }
 
     var activeTab                by remember { mutableStateOf(DetailTab.SCADENZE) }
     var showAddDeadlineDialog    by remember { mutableStateOf(false) }
@@ -63,6 +79,7 @@ fun ItemDetailScreen(
     var hasScrolled     by remember { mutableStateOf(false) }
     var activeHighlight by remember { mutableStateOf(scrollToDeadlineId) }
 
+    // Scroll + highlight scadenza
     LaunchedEffect(scrollToDeadlineId, state.deadlines) {
         if (scrollToDeadlineId == null || hasScrolled || state.deadlines.isEmpty()) return@LaunchedEffect
         val idx = state.deadlines.indexOfFirst { it.id == scrollToDeadlineId }
@@ -74,178 +91,226 @@ fun ItemDetailScreen(
         activeHighlight = null
     }
 
-    // FAB color animata tra amber e blue al cambio tab
+    // Snackbar feedback pagamento ricorrente
+    LaunchedEffect(state.lastPaidNextDueDate) {
+        val next = state.lastPaidNextDueDate ?: return@LaunchedEffect
+        snackbarHost.showSnackbar(
+            message = "✓ Pagata — prossima scadenza: ${formatDate(next)}",
+            duration = SnackbarDuration.Short
+        )
+        vm.clearNextDueDateFeedback()
+    }
+
+    // Snackbar feedback esito export CSV
+    val csvExportResult by vm.csvExportResult.collectAsState()
+    LaunchedEffect(csvExportResult) {
+        val success = csvExportResult ?: return@LaunchedEffect
+        snackbarHost.showSnackbar(
+            message = if (success) "✓ CSV esportato con successo" else "✗ Esportazione CSV fallita",
+            duration = SnackbarDuration.Short
+        )
+        vm.clearCsvExportResult()
+    }
+
     val fabColor by animateColorAsState(
         targetValue = if (activeTab == DetailTab.SCADENZE) AccentAmber else AccentBlue,
-        animationSpec = tween(300),
-        label = "fab_color"
+        animationSpec = tween(300), label = "fab_color"
     )
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(BackgroundDark)
-            .navigationBarsPadding()
-            .statusBarsPadding()
-    ) {
-        when {
-            state.isLoading    -> CircularProgressIndicator(
-                modifier = Modifier.align(Alignment.Center), color = AccentAmber, strokeWidth = 2.dp)
-            state.item == null -> Text("Item non trovato", color = TextSecondary,
-                modifier = Modifier.align(Alignment.Center))
-            else -> {
-                val item             = state.item!!
-                val deadlineCount    = state.deadlines.size
-                val appointmentCount = state.appointmentsPending.size +
-                        state.appointmentsDoneNotPaid.size +
-                        state.appointmentsPaid.size
+    Scaffold(
+        containerColor = BackgroundDark,
+        snackbarHost = {
+            SnackbarHost(snackbarHost) { data ->
+                Snackbar(
+                    snackbarData = data,
+                    containerColor = SurfaceElevated,
+                    contentColor = if (data.visuals.message.startsWith("✗")) DestructiveRed else AccentGreen,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+        }
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .navigationBarsPadding()
+                .statusBarsPadding()
+        ) {
+            when {
+                state.isLoading    -> CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center), color = AccentAmber, strokeWidth = 2.dp)
+                state.item == null -> Text("Item non trovato", color = TextSecondary,
+                    modifier = Modifier.align(Alignment.Center))
+                else -> {
+                    val item             = state.item!!
+                    val deadlineCount    = state.deadlines.size
+                    val appointmentCount = state.appointmentsPending.size +
+                            state.appointmentsDoneNotPaid.size + state.appointmentsPaid.size
 
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = 160.dp)
-                ) {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(bottom = 160.dp)
+                    ) {
 
-                    // ── Hero header ──────────────────────────────────────────
-                    item {
-                        Box(modifier = Modifier
-                            .fillMaxWidth()
-                            .background(Brush.verticalGradient(listOf(SurfaceDark, BackgroundDark)))
-                            .padding(horizontal = 20.dp, vertical = 24.dp)) {
-                            Column {
-                                Row(modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically) {
-                                    IconButton(onClick = onBack,
-                                        modifier = Modifier.clip(CircleShape).background(SurfaceElevated).size(40.dp)) {
-                                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Indietro",
-                                            tint = TextPrimary, modifier = Modifier.size(18.dp))
-                                    }
-                                    IconButton(onClick = { showDeleteItemDialog = true },
-                                        modifier = Modifier.clip(CircleShape).background(DestructiveRed.copy(alpha = 0.12f)).size(40.dp)) {
-                                        Icon(Icons.Default.Delete, contentDescription = "Elimina",
-                                            tint = DestructiveRed, modifier = Modifier.size(18.dp))
-                                    }
-                                }
-                                Spacer(Modifier.height(20.dp))
-                                Box(modifier = Modifier.clip(RoundedCornerShape(6.dp))
-                                    .background(AccentAmber.copy(alpha = 0.15f))
-                                    .padding(horizontal = 10.dp, vertical = 4.dp)) {
-                                    Text(item.type.name.uppercase(), color = AccentAmber,
-                                        fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
-                                }
-                                Spacer(Modifier.height(8.dp))
-                                Text(item.name, color = TextPrimary, fontSize = 28.sp,
-                                    fontWeight = FontWeight.Bold, lineHeight = 34.sp)
-                                if (!item.notes.isNullOrBlank()) {
-                                    Spacer(Modifier.height(8.dp))
-                                    Text(item.notes, color = TextSecondary, fontSize = 14.sp)
-                                }
-                            }
-                        }
-                    }
-
-                    // ── Tab switcher ─────────────────────────────────────────
-                    item {
-                        Row(modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            TabCard(label = "SCADENZE", count = deadlineCount,
-                                active = activeTab == DetailTab.SCADENZE, color = AccentAmber,
-                                modifier = Modifier.weight(1f)) { activeTab = DetailTab.SCADENZE }
-                            TabCard(label = "APPUNTAMENTI", count = appointmentCount,
-                                active = activeTab == DetailTab.APPUNTAMENTI, color = AccentBlue,
-                                modifier = Modifier.weight(1f)) { activeTab = DetailTab.APPUNTAMENTI }
-                        }
-                    }
-
-                    // ── Tab: Scadenze — items diretti per scroll preciso ──────
-                    if (activeTab == DetailTab.SCADENZE) {
-                        item(key = "sec_scadenze") { SectionHeader("SCADENZE", state.deadlines.size) }
-                        if (state.deadlines.isEmpty()) {
-                            item(key = "empty_deadlines") { EmptyState("Nessuna scadenza registrata", "📅") }
-                        } else {
-                            items(state.deadlines, key = { "dl_${it.id}" }) { d ->
-                                DeadlineCard(
-                                    deadline      = d,
-                                    isHighlighted = d.id == activeHighlight,
-                                    onMarkPaid = { cents ->
-                                        scope.launch {
-                                            val next = vm.markAsPaidAndReturnNextDueDate(d, cents)
-                                            if (next == null) DeadlineReminderScheduler.cancel(context, d.id)
-                                            else DeadlineReminderScheduler.schedule(context, d.id, next, d.reminderDaysCsv)
+                        // ── Hero header ──────────────────────────────────────
+                        item {
+                            Box(modifier = Modifier.fillMaxWidth()
+                                .background(Brush.verticalGradient(listOf(SurfaceDark, BackgroundDark)))
+                                .padding(horizontal = 20.dp, vertical = 24.dp)) {
+                                Column {
+                                    Row(modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically) {
+                                        IconButton(onClick = onBack,
+                                            modifier = Modifier.clip(CircleShape).background(SurfaceElevated).size(40.dp)) {
+                                            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Indietro",
+                                                tint = TextPrimary, modifier = Modifier.size(18.dp))
                                         }
-                                    },
-                                    onDelete = { vm.deleteDeadline(d); DeadlineReminderScheduler.cancel(context, d.id) },
-                                    onEdit   = { editingDeadline = d }
-                                )
+                                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            // Export CSV
+                                            IconButton(onClick = {
+                                                val safeName = item.name.replace(Regex("[^A-Za-z0-9_\\-]"), "_")
+                                                csvLauncher.launch("${safeName}_export.csv")
+                                            }, modifier = Modifier.clip(CircleShape)
+                                                .background(AccentAmber.copy(alpha = 0.12f)).size(40.dp)) {
+                                                Icon(Icons.Default.Share, "Esporta CSV",
+                                                    tint = AccentAmber, modifier = Modifier.size(18.dp))
+                                            }
+                                            IconButton(onClick = { showDeleteItemDialog = true },
+                                                modifier = Modifier.clip(CircleShape)
+                                                    .background(DestructiveRed.copy(alpha = 0.12f)).size(40.dp)) {
+                                                Icon(Icons.Default.Delete, "Elimina",
+                                                    tint = DestructiveRed, modifier = Modifier.size(18.dp))
+                                            }
+                                        }
+                                    }
+                                    Spacer(Modifier.height(20.dp))
+                                    Box(modifier = Modifier.clip(RoundedCornerShape(6.dp))
+                                        .background(AccentAmber.copy(alpha = 0.15f))
+                                        .padding(horizontal = 10.dp, vertical = 4.dp)) {
+                                        Text(item.type.name.uppercase(), color = AccentAmber,
+                                            fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+                                    }
+                                    Spacer(Modifier.height(8.dp))
+                                    Text(item.name, color = TextPrimary, fontSize = 28.sp,
+                                        fontWeight = FontWeight.Bold, lineHeight = 34.sp)
+                                    if (!item.notes.isNullOrBlank()) {
+                                        Spacer(Modifier.height(8.dp))
+                                        Text(item.notes, color = TextSecondary, fontSize = 14.sp)
+                                    }
+                                    // ── Stats strip ─────────────────────────
+                                    Spacer(Modifier.height(16.dp))
+                                    StatsStrip(stats = state.stats)
+                                }
                             }
                         }
-                        item(key = "spacer_records") { Spacer(Modifier.height(10.dp)) }
-                        item(key = "sec_records") { SectionHeader("STORICO PAGAMENTI", state.records.size) }
-                        if (state.records.isEmpty()) {
-                            item(key = "empty_records") { EmptyState("Nessun pagamento registrato", "💳") }
-                        } else {
-                            items(state.records, key = { "rec_${it.id}" }) { r ->
-                                RecordCard(
-                                    record            = r,
-                                    onDelete          = { vm.deleteRecord(r) },
-                                    onUpdateUniSalute = { s, st, ms -> vm.updateRecordUniSalute(r, s, st, ms) }
-                                )
+
+                        // ── Tab switcher ─────────────────────────────────────
+                        item {
+                            Row(modifier = Modifier.fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                TabCard(label = "SCADENZE", count = deadlineCount,
+                                    active = activeTab == DetailTab.SCADENZE, color = AccentAmber,
+                                    modifier = Modifier.weight(1f)) { activeTab = DetailTab.SCADENZE }
+                                TabCard(label = "APPUNTAMENTI", count = appointmentCount,
+                                    active = activeTab == DetailTab.APPUNTAMENTI, color = AccentBlue,
+                                    modifier = Modifier.weight(1f)) { activeTab = DetailTab.APPUNTAMENTI }
                             }
                         }
-                    }
 
-                    // ── Tab: Appuntamenti ────────────────────────────────────
-                    if (activeTab == DetailTab.APPUNTAMENTI) {
-                        item(key = "appuntamenti_content") {
-                            AppuntamentiContent(
-                                state         = state,
-                                onToggleOrder = { vm.toggleAppointmentsOrder() },
-                                onMarkDone    = { a, notes, cents ->
-                                    vm.markAppointmentDone(a, notes, cents)
-                                    AppointmentReminderScheduler.cancel(context, a.id)
-                                },
-                                onDeleteAppointment = { a ->
-                                    vm.deleteAppointment(a)
-                                    AppointmentReminderScheduler.cancel(context, a.id)
-                                },
-                                onShowInvoice = { showInvoiceDialog = true }
-                            )
-                        }
-                    }
-                }
-
-                // ── FAB ──────────────────────────────────────────────────────
-                Column(modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    horizontalAlignment = Alignment.End) {
-                    AnimatedVisibility(visible = fabExpanded,
-                        enter = fadeIn() + slideInVertically { it },
-                        exit  = fadeOut() + slideOutVertically { it }) {
-                        Column(verticalArrangement = Arrangement.spacedBy(12.dp),
-                            horizontalAlignment = Alignment.End) {
-                            if (activeTab == DetailTab.SCADENZE) {
-                                FabOption("Aggiungi record", AccentGreen, Icons.Default.Receipt) {
-                                    showAddRecordDialog = true; fabExpanded = false }
-                                FabOption("Aggiungi scadenza", AccentAmber, Icons.Default.CalendarMonth) {
-                                    showAddDeadlineDialog = true; fabExpanded = false }
+                        // ── Tab: Scadenze ─────────────────────────────────────
+                        if (activeTab == DetailTab.SCADENZE) {
+                            item(key = "sec_scadenze") { SectionHeader("SCADENZE", state.deadlines.size) }
+                            if (state.deadlines.isEmpty()) {
+                                item(key = "empty_deadlines") { EmptyState("Nessuna scadenza registrata", "📅") }
                             } else {
-                                FabOption("Aggiungi appuntamento", AccentBlue, Icons.Default.EventAvailable) {
-                                    showAddAppointmentDialog = true; fabExpanded = false }
+                                items(state.deadlines, key = { "dl_${it.id}" }) { d ->
+                                    DeadlineCard(
+                                        deadline      = d,
+                                        isHighlighted = d.id == activeHighlight,
+                                        onMarkPaid = { cents ->
+                                            scope.launch {
+                                                val next = vm.markAsPaidAndReturnNextDueDate(d, cents)
+                                                if (next == null) DeadlineReminderScheduler.cancel(context, d.id)
+                                                else DeadlineReminderScheduler.schedule(context, d.id, next, d.reminderDaysCsv)
+                                            }
+                                        },
+                                        onDelete = { vm.deleteDeadline(d); DeadlineReminderScheduler.cancel(context, d.id) },
+                                        onEdit   = { editingDeadline = d },
+                                        modifier = Modifier.animateItem(
+                                            fadeInSpec    = tween(250),
+                                            fadeOutSpec   = tween(200),
+                                            placementSpec = spring(stiffness = Spring.StiffnessMediumLow)
+                                        )
+                                    )
+                                }
+                            }
+                            item(key = "spacer_records") { Spacer(Modifier.height(10.dp)) }
+                            item(key = "sec_records") { SectionHeader("STORICO PAGAMENTI", state.records.size) }
+                            if (state.records.isEmpty()) {
+                                item(key = "empty_records") { EmptyState("Nessun pagamento registrato", "💳") }
+                            } else {
+                                items(state.records, key = { "rec_${it.id}" }) { r ->
+                                    RecordCard(record = r, onDelete = { vm.deleteRecord(r) },
+                                        onUpdateUniSalute = { s, st, ms -> vm.updateRecordUniSalute(r, s, st, ms) })
+                                }
+                            }
+                        }
+
+                        // ── Tab: Appuntamenti ─────────────────────────────────
+                        if (activeTab == DetailTab.APPUNTAMENTI) {
+                            item(key = "appuntamenti_content") {
+                                AppuntamentiContent(
+                                    state         = state,
+                                    onToggleOrder = { vm.toggleAppointmentsOrder() },
+                                    onMarkDone    = { a, notes, cents ->
+                                        vm.markAppointmentDone(a, notes, cents)
+                                        AppointmentReminderScheduler.cancel(context, a.id)
+                                    },
+                                    onDeleteAppointment = { a ->
+                                        vm.deleteAppointment(a)
+                                        AppointmentReminderScheduler.cancel(context, a.id)
+                                    },
+                                    onShowInvoice = { showInvoiceDialog = true }
+                                )
                             }
                         }
                     }
-                    FloatingActionButton(
-                        onClick = { fabExpanded = !fabExpanded },
-                        containerColor = fabColor,
-                        contentColor = Color(0xFF0F0F13), shape = CircleShape,
-                        elevation = FloatingActionButtonDefaults.elevation(8.dp)) {
-                        AnimatedContent(targetState = fabExpanded,
-                            transitionSpec = { fadeIn() + scaleIn() togetherWith fadeOut() + scaleOut() },
-                            label = "fab_icon") { expanded ->
-                            Icon(if (expanded) Icons.Default.Close else Icons.Default.Add, null)
+
+                    // ── FAB ──────────────────────────────────────────────────
+                    Column(modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        horizontalAlignment = Alignment.End) {
+                        AnimatedVisibility(visible = fabExpanded,
+                            enter = fadeIn() + slideInVertically { it },
+                            exit  = fadeOut() + slideOutVertically { it }) {
+                            Column(verticalArrangement = Arrangement.spacedBy(12.dp),
+                                horizontalAlignment = Alignment.End) {
+                                if (activeTab == DetailTab.SCADENZE) {
+                                    FabOption("Aggiungi record", AccentGreen, Icons.Default.Receipt) {
+                                        showAddRecordDialog = true; fabExpanded = false }
+                                    FabOption("Aggiungi scadenza", AccentAmber, Icons.Default.CalendarMonth) {
+                                        showAddDeadlineDialog = true; fabExpanded = false }
+                                } else {
+                                    FabOption("Aggiungi appuntamento", AccentBlue, Icons.Default.EventAvailable) {
+                                        showAddAppointmentDialog = true; fabExpanded = false }
+                                }
+                            }
+                        }
+                        FloatingActionButton(
+                            onClick = { fabExpanded = !fabExpanded },
+                            containerColor = fabColor,
+                            contentColor = Color(0xFF0F0F13), shape = CircleShape,
+                            elevation = FloatingActionButtonDefaults.elevation(8.dp)) {
+                            AnimatedContent(targetState = fabExpanded,
+                                transitionSpec = { fadeIn() + scaleIn() togetherWith fadeOut() + scaleOut() },
+                                label = "fab_icon") { expanded ->
+                                Icon(if (expanded) Icons.Default.Close else Icons.Default.Add, null)
+                            }
                         }
                     }
                 }
@@ -322,8 +387,7 @@ fun ItemDetailScreen(
                 text = {
                     Column(horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Stai per eliminare", color = TextSecondary, fontSize = 14.sp,
-                            textAlign = TextAlign.Center)
+                        Text("Stai per eliminare", color = TextSecondary, fontSize = 14.sp, textAlign = TextAlign.Center)
                         Text("\"${it.name}\"", color = TextPrimary, fontWeight = FontWeight.SemiBold,
                             fontSize = 16.sp, textAlign = TextAlign.Center)
                         Spacer(Modifier.height(4.dp))
@@ -351,6 +415,67 @@ fun ItemDetailScreen(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// StatsStrip — strip orizzontale con statistiche item
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun StatsStrip(stats: ItemStats) {
+    if (stats.totalSpentCents == 0L && stats.completedAppointments == 0) return
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        if (stats.totalSpentThisYearCents > 0L) {
+            StatChip(
+                label = "Quest'anno",
+                value = "€${"%.0f".format(stats.totalSpentThisYearCents / 100.0)}",
+                color = AccentAmber,
+                modifier = Modifier.weight(1f)
+            )
+        }
+        if (stats.totalSpentCents > 0L) {
+            StatChip(
+                label = "Totale speso",
+                value = "€${"%.0f".format(stats.totalSpentCents / 100.0)}",
+                color = AccentAmberLight,
+                modifier = Modifier.weight(1f)
+            )
+        }
+        if (stats.completedAppointments > 0) {
+            StatChip(
+                label = "Sedute",
+                value = "${stats.completedAppointments}",
+                color = AccentBlue,
+                modifier = Modifier.weight(1f)
+            )
+        }
+        if (stats.avgAppointmentCents != null) {
+            StatChip(
+                label = "Media seduta",
+                value = "€${"%.0f".format(stats.avgAppointmentCents / 100.0)}",
+                color = AccentGreen,
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun StatChip(label: String, value: String, color: Color, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(color.copy(alpha = 0.10f))
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(value, color = color, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+        Text(label, color = color.copy(alpha = 0.7f), fontSize = 10.sp, fontWeight = FontWeight.Medium)
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // AppuntamentiContent
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -362,30 +487,20 @@ private fun AppuntamentiContent(
     onDeleteAppointment: (com.example.rimembranze.data.db.AppointmentEntity) -> Unit,
     onShowInvoice: () -> Unit
 ) {
-    // ── Header prossimi con toggle ordinamento ───────────────────────────────
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
+    Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically) {
         Text("PROSSIMI", color = TextSecondary, fontSize = 11.sp,
             fontWeight = FontWeight.Bold, letterSpacing = 2.sp, modifier = Modifier.weight(1f))
         Text("${state.appointmentsPending.size}", color = AccentBlue,
             fontSize = 11.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.width(12.dp))
         IconButton(onClick = onToggleOrder, modifier = Modifier.size(28.dp)) {
-            Icon(
-                Icons.AutoMirrored.Filled.Sort,
+            Icon(Icons.AutoMirrored.Filled.Sort,
                 contentDescription = if (state.appointmentsAscending) "Ordine discendente" else "Ordine ascendente",
-                tint = AccentBlue,
-                modifier = Modifier.size(16.dp)
-            )
+                tint = AccentBlue, modifier = Modifier.size(16.dp))
         }
-        Text(
-            text = if (state.appointmentsAscending) "↑" else "↓",
-            color = AccentBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold
-        )
+        Text(if (state.appointmentsAscending) "↑" else "↓",
+            color = AccentBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold)
     }
     HorizontalDivider(color = DividerColor, thickness = 0.5.dp)
 
@@ -393,15 +508,12 @@ private fun AppuntamentiContent(
         EmptyState("Nessun appuntamento programmato", "🗓")
     } else {
         state.appointmentsPending.forEach { a ->
-            AppointmentCard(
-                appointment = a,
-                onMarkDone  = { notes, cents -> onMarkDone(a, notes, cents) },
-                onDelete    = { onDeleteAppointment(a) }
-            )
+            AppointmentCard(appointment = a,
+                onMarkDone = { notes, cents -> onMarkDone(a, notes, cents) },
+                onDelete   = { onDeleteAppointment(a) })
         }
     }
 
-    // ── Da fatturare ─────────────────────────────────────────────────────────
     if (state.appointmentsDoneNotPaid.isNotEmpty()) {
         Spacer(Modifier.height(10.dp))
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
@@ -412,14 +524,9 @@ private fun AppuntamentiContent(
                 fontSize = 11.sp, fontWeight = FontWeight.Bold)
         }
         HorizontalDivider(color = DividerColor, thickness = 0.5.dp)
-
         state.appointmentsDoneNotPaid.forEach { a ->
-            AppointmentDoneCard(
-                appointment = a,
-                onDelete    = { onDeleteAppointment(a) }
-            )
+            AppointmentDoneCard(appointment = a, onDelete = { onDeleteAppointment(a) })
         }
-
         val total = state.appointmentsDoneNotPaid.sumOf { it.amountCents ?: 0L }
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -430,8 +537,7 @@ private fun AppuntamentiContent(
                 if (total > 0) Text("Totale: €${"%.2f".format(total / 100.0)}",
                     color = AccentGreen, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
             }
-            Button(onClick = onShowInvoice,
-                shape = RoundedCornerShape(10.dp),
+            Button(onClick = onShowInvoice, shape = RoundedCornerShape(10.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = AccentGreen.copy(alpha = 0.15f), contentColor = AccentGreen),
                 elevation = ButtonDefaults.buttonElevation(0.dp)) {
@@ -442,18 +548,14 @@ private fun AppuntamentiContent(
         }
     }
 
-    // ── Storico sedute ────────────────────────────────────────────────────────
     Spacer(Modifier.height(10.dp))
     SectionHeader("STORICO SEDUTE", state.appointmentsPaid.size, AccentBlue)
     if (state.appointmentsPaid.isEmpty()) {
         EmptyState("Nessuna seduta completata", "✓")
     } else {
         state.appointmentsPaid.forEach { a ->
-            AppointmentDoneCard(
-                appointment   = a,
-                showPaidBadge = true,
-                onDelete      = { onDeleteAppointment(a) }
-            )
+            AppointmentDoneCard(appointment = a, showPaidBadge = true,
+                onDelete = { onDeleteAppointment(a) })
         }
     }
 }

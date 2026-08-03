@@ -38,7 +38,8 @@ fun DeadlineCard(
     isHighlighted: Boolean = false,
     onMarkPaid: (amountCents: Long?) -> Unit,
     onDelete: () -> Unit,
-    onEdit: () -> Unit
+    onEdit: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     var deleteConfirm      by remember { mutableStateOf(false) }
     var showMarkPaidDialog by remember { mutableStateOf(false) }
@@ -51,10 +52,19 @@ fun DeadlineCard(
         else           -> AccentAmberLight
     }
 
+    // Mostra solo i giorni presenti nei REMINDER_OPTIONS — ignora valori legacy
+    val knownDays = REMINDER_OPTIONS.map { it.first }.toSet()
     val reminderLabel = remember(deadline.reminderDaysCsv) {
-        deadline.reminderDaysCsv.split(",").mapNotNull { it.trim().toIntOrNull() }
-            .sortedDescending().joinToString(" · ") { d ->
-                when (d) { 0 -> "giorno stesso"; 1 -> "1 giorno prima"; else -> "$d giorni prima" }
+        deadline.reminderDaysCsv.split(",")
+            .mapNotNull { it.trim().toIntOrNull() }
+            .filter { it in knownDays }              // ← filtra 30, vecchi valori ecc.
+            .sortedDescending()
+            .joinToString(" · ") { d ->
+                when (d) {
+                    0    -> "stesso giorno"
+                    1    -> "1 giorno prima"
+                    else -> "$d giorni prima"
+                }
             }
     }
 
@@ -62,7 +72,7 @@ fun DeadlineCard(
         androidx.compose.foundation.BorderStroke(1.5.dp, AccentAmber.copy(alpha = 0.6f)) else null
 
     Card(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+        modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = SurfaceDark),
         border = cardBorder,
@@ -158,7 +168,7 @@ fun DeadlineCard(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// DeadlineDialog
+// DeadlineDialog — 4 chip su 2 righe (2+2)
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
@@ -169,7 +179,7 @@ fun DeadlineDialog(
     initialRecurrence: String = "NONE",
     initialNotes: String? = null,
     initialAmountCents: Long? = null,
-    initialReminderDaysCsv: String = "14,7",
+    initialReminderDaysCsv: String = "7,1",
     onDismiss: () -> Unit,
     onSave: (category: String, dateEpochMs: Long, recurrence: String,
              notes: String?, amountCents: Long?, reminderDaysCsv: String) -> Unit
@@ -182,7 +192,11 @@ fun DeadlineDialog(
         mutableStateOf(initialAmountCents?.let { "%.2f".format(it / 100.0) } ?: "")
     }
     var recExpanded  by remember { mutableStateOf(false) }
-    var selectedDays by remember { mutableStateOf(csvToSet(initialReminderDaysCsv)) }
+    // Filtra subito i valori legacy non nei chip (es. 30)
+    val knownDays = REMINDER_OPTIONS.map { it.first }.toSet()
+    var selectedDays by remember {
+        mutableStateOf(csvToSet(initialReminderDaysCsv).filter { it in knownDays }.toSet())
+    }
     val context = LocalContext.current
 
     AlertDialog(
@@ -240,40 +254,28 @@ fun DeadlineDialog(
 
                 HorizontalDivider(thickness = 0.5.dp, color = DividerColor)
 
+                // ── 4 chip su 2 righe (2+2) ──────────────────────────────────
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Notificami", color = TextSecondary, fontSize = 11.sp,
                         fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                    // Prima riga: 14g e 7g
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.fillMaxWidth()) {
-                        repeat(3) { index ->
-                            val option = REMINDER_OPTIONS.getOrNull(index)
-                            if (option != null) {
-                                val (days, label) = option
-                                val selected = days in selectedDays
-                                FilterChip(
-                                    selected = selected,
-                                    onClick = { selectedDays = if (selected) selectedDays - days else selectedDays + days },
-                                    label = {
-                                        Text(label, fontSize = 11.sp, maxLines = 1,
-                                            textAlign = TextAlign.Center,
-                                            modifier = Modifier.fillMaxWidth(),
-                                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal)
-                                    },
-                                    modifier = Modifier.weight(1f),
-                                    shape = RoundedCornerShape(8.dp),
-                                    colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = AccentAmber.copy(alpha = 0.20f),
-                                        selectedLabelColor = AccentAmber,
-                                        containerColor = SurfaceElevated, labelColor = TextSecondary),
-                                    border = FilterChipDefaults.filterChipBorder(
-                                        enabled = true, selected = selected,
-                                        selectedBorderColor = AccentAmber.copy(alpha = 0.5f),
-                                        selectedBorderWidth = 1.dp,
-                                        borderColor = DividerColor, borderWidth = 0.5.dp)
-                                )
-                            } else {
-                                Spacer(modifier = Modifier.weight(1f))
-                            }
+                        REMINDER_OPTIONS.take(2).forEach { (days, label) ->
+                            ReminderChip(days = days, label = label,
+                                selected = days in selectedDays,
+                                onToggle = { selectedDays = if (days in selectedDays) selectedDays - days else selectedDays + days },
+                                modifier = Modifier.weight(1f))
+                        }
+                    }
+                    // Seconda riga: 1g e stesso giorno
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()) {
+                        REMINDER_OPTIONS.drop(2).forEach { (days, label) ->
+                            ReminderChip(days = days, label = label,
+                                selected = days in selectedDays,
+                                onToggle = { selectedDays = if (days in selectedDays) selectedDays - days else selectedDays + days },
+                                modifier = Modifier.weight(1f))
                         }
                     }
                 }
@@ -319,5 +321,32 @@ fun DeadlineDialog(
                 colors = ButtonDefaults.textButtonColors(contentColor = TextSecondary)
             ) { Text("Annulla") }
         }
+    )
+}
+
+@Composable
+private fun ReminderChip(
+    days: Int, label: String, selected: Boolean,
+    onToggle: () -> Unit, modifier: Modifier = Modifier
+) {
+    FilterChip(
+        selected = selected,
+        onClick = onToggle,
+        label = {
+            Text(label, fontSize = 11.sp, maxLines = 1,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal)
+        },
+        modifier = modifier,
+        shape = RoundedCornerShape(8.dp),
+        colors = FilterChipDefaults.filterChipColors(
+            selectedContainerColor = AccentAmber.copy(alpha = 0.20f),
+            selectedLabelColor = AccentAmber,
+            containerColor = SurfaceElevated, labelColor = TextSecondary),
+        border = FilterChipDefaults.filterChipBorder(
+            enabled = true, selected = selected,
+            selectedBorderColor = AccentAmber.copy(alpha = 0.5f), selectedBorderWidth = 1.dp,
+            borderColor = DividerColor, borderWidth = 0.5.dp)
     )
 }

@@ -1,6 +1,10 @@
 package com.example.rimembranze.ui.components
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.*
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -34,11 +38,12 @@ val TextSecondary    = Color(0xFF8A8898)
 val DividerColor     = Color(0xFF2C2C3A)
 val DestructiveRed   = Color(0xFFE05858)
 
-// ── Reminder options ──────────────────────────────────────────────────────────
+// ── Reminder options — 4 chip: 14g / 7g / 1g / giorno stesso ─────────────────
 val REMINDER_OPTIONS = listOf(
     14 to "14 giorni",
     7  to "7 giorni",
-    0  to "Giorno stesso"
+    1  to "1 giorno",
+    0  to "Stesso giorno"
 )
 
 fun csvToSet(csv: String): Set<Int> =
@@ -54,7 +59,6 @@ fun formatDate(epochMs: Long): String =
 fun formatDateTime(epochMs: Long): String =
     SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.ITALY).format(Date(epochMs))
 
-// Data e ora separate — usato negli AppointmentInfoChip
 fun formatDateOnly(epochMs: Long): String =
     SimpleDateFormat("dd/MM/yyyy", Locale.ITALY).format(Date(epochMs))
 
@@ -79,7 +83,7 @@ val recurrenceOptions = listOf(
     com.example.rimembranze.data.Recurrence.YEARLY     to "Annuale"
 )
 
-// ── TabCard ───────────────────────────────────────────────────────────────────
+// ── TabCard con contatore animato ─────────────────────────────────────────────
 @Composable
 fun TabCard(
     label: String,
@@ -102,13 +106,23 @@ fun TabCard(
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = "$count",
-                color = if (active) color else TextSecondary,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                lineHeight = 28.sp
-            )
+            AnimatedContent(
+                targetState = count,
+                transitionSpec = {
+                    val up = targetState > initialState
+                    slideInVertically { if (up) -it else it } togetherWith
+                            slideOutVertically { if (up) it else -it }
+                },
+                label = "tab_count_$label"
+            ) { c ->
+                Text(
+                    text = "$c",
+                    color = if (active) color else TextSecondary,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    lineHeight = 28.sp
+                )
+            }
             Spacer(Modifier.height(2.dp))
             Text(
                 text = label,
@@ -170,46 +184,23 @@ fun SectionHeader(title: String, count: Int, accentColor: Color = AccentAmber) {
 // ── EmptyState animata ────────────────────────────────────────────────────────
 @Composable
 fun EmptyState(message: String, icon: String = "○") {
-    // Scala in con bounce all'ingresso
     val scale by animateFloatAsState(
         targetValue = 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness    = Spring.StiffnessMediumLow
-        ),
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow),
         label = "empty_scale"
     )
-    // Respiro lento continuo sull'icona
     val breathAlpha by animateFloatAsState(
         targetValue = 0.4f,
-        animationSpec = infiniteRepeatable(
-            animation  = tween(1800, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
+        animationSpec = infiniteRepeatable(tween(1800, easing = LinearEasing), RepeatMode.Reverse),
         label = "empty_breath"
     )
-
     Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 36.dp, horizontal = 28.dp)
-            .scale(scale),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 36.dp, horizontal = 28.dp).scale(scale),
         contentAlignment = Alignment.Center
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Text(
-                text  = icon,
-                color = TextSecondary.copy(alpha = breathAlpha),
-                fontSize = 36.sp
-            )
-            Text(
-                text  = message,
-                color = TextSecondary,
-                fontSize = 14.sp
-            )
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(icon, color = TextSecondary.copy(alpha = breathAlpha), fontSize = 36.sp)
+            Text(message, color = TextSecondary, fontSize = 14.sp)
         }
     }
 }
@@ -226,7 +217,9 @@ fun InfoChip(
         modifier = modifier
             .clip(RoundedCornerShape(10.dp))
             .background(SurfaceElevated)
-            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .fillMaxHeight()                          // ← stessa altezza del chip più alto
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.Center      // ← centra verticalmente
     ) {
         Text(label, color = TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Medium)
         Spacer(Modifier.height(2.dp))
@@ -235,7 +228,7 @@ fun InfoChip(
 }
 
 // ── AppointmentInfoChip ───────────────────────────────────────────────────────
-// Chip con data su riga 1 e ora su riga 2 — altezza uniforme tramite fillMaxHeight
+// Chip con data su riga 1 e ora su riga 2
 @Composable
 fun AppointmentInfoChip(
     epochMs: Long,
@@ -252,10 +245,40 @@ fun AppointmentInfoChip(
     ) {
         Text("Data", color = TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Medium)
         Spacer(Modifier.height(2.dp))
-        Text(formatDateOnly(epochMs), color = valueColor,
-            fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-        Text(formatTimeOnly(epochMs), color = valueColor,
-            fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        Text(formatDateOnly(epochMs), color = valueColor, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        Text(formatTimeOnly(epochMs), color = valueColor, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+// ── MancaInfoChip ────────────────────────────────────────────────────────────
+// Chip "Manca" su due righe (numero grande + unità) per stessa altezza di AppointmentInfoChip
+@Composable
+fun MancaInfoChip(
+    timeLabel: String,
+    valueColor: Color,
+    modifier: Modifier = Modifier
+) {
+    // Separa numero e unità: "Tra 5g" → "Tra 5" + "giorni", "Tra 3h" → "Tra 3" + "ore", ecc.
+    val (main, sub) = when {
+        timeLabel == "Passato"  -> "—" to "passato"
+        timeLabel == "Domani"   -> "Dom" to "ani"
+        timeLabel.endsWith("h") -> timeLabel.dropLast(1) to "ore"
+        timeLabel.endsWith("g") -> timeLabel.dropLast(1) to "giorni"
+        else                    -> timeLabel to ""
+    }
+
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(SurfaceElevated)
+            .fillMaxHeight()
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text("Manca", color = TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+        Spacer(Modifier.height(2.dp))
+        Text(main, color = valueColor, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        if (sub.isNotEmpty()) Text(sub, color = valueColor, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 

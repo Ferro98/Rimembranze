@@ -51,7 +51,6 @@ fun AppointmentCard(
     }
     val isUrgent = msLeft in 0..(24 * 60 * 60 * 1000L)
 
-    // Pulse solo per appuntamenti urgenti (< 24h)
     val dotAlpha by animateFloatAsState(
         targetValue = if (isUrgent) 0.3f else 1f,
         animationSpec = if (isUrgent) infiniteRepeatable(
@@ -89,8 +88,9 @@ fun AppointmentCard(
             ) {
                 AppointmentInfoChip(epochMs = appointment.dateEpochMs,
                     valueColor = urgencyColor, modifier = Modifier.weight(1f))
-                InfoChip(label = "Manca", value = timeLabel,
-                    valueColor = urgencyColor, modifier = Modifier.weight(1f).fillMaxHeight())
+                // MancaInfoChip su due righe — stessa altezza del chip data
+                MancaInfoChip(timeLabel = timeLabel, valueColor = urgencyColor,
+                    modifier = Modifier.weight(1f))
             }
 
             if (!appointment.notes.isNullOrBlank()) {

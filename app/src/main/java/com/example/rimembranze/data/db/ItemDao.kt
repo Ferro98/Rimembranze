@@ -1,6 +1,5 @@
 package com.example.rimembranze.data.db
 
-import android.content.ClipData.Item
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
