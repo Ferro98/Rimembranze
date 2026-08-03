@@ -9,6 +9,10 @@ interface RecordDao {
     @Query("SELECT * FROM records WHERE itemId = :itemId ORDER BY dateEpochMs DESC, id DESC")
     fun observeByItem(itemId: Long): Flow<List<RecordEntity>>
 
+    // Snapshot one-shot per l'export/import del backup completo
+    @Query("SELECT * FROM records")
+    suspend fun getAllOnce(): List<RecordEntity>
+
     @Query("SELECT * FROM records WHERE id = :id LIMIT 1")
     suspend fun getById(id: Long): RecordEntity?
 

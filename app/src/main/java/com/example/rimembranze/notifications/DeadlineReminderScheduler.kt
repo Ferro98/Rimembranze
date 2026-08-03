@@ -19,22 +19,24 @@ object DeadlineReminderScheduler {
     private const val UNIQUE_PREFIX = "deadline_"
 
     /**
-     * Schedula UN worker per ogni valore in [reminderDaysCsv].
-     * Ogni worker ha un uniqueName "deadline_{id}_{days}d" → REPLACE
-     * gestisce automaticamente il rescheduling se la data cambia.
-     *
-     * I preavvisi già scaduti vengono ignorati silenziosamente.
+     * Cancella TUTTI i worker precedenti per questa deadline, poi
+     * schedula solo quelli previsti da [reminderDaysCsv].
+     * Questo evita che worker "orfani" da CSV precedenti sopravvivano.
      */
     fun schedule(
         context: Context,
         deadlineId: Long,
         dueDateEpochMs: Long,
-        reminderDaysCsv: String = "30,14,7,1"
+        reminderDaysCsv: String
     ) {
         ensureChannel(context)
         val wm  = WorkManager.getInstance(context)
         val now = System.currentTimeMillis()
 
+        // 1. Cancella tutti i worker esistenti per questa deadline
+        wm.cancelAllWorkByTag(UNIQUE_PREFIX + deadlineId)
+
+        // 2. Schedula solo i giorni presenti nel CSV corrente
         reminderDaysCsv
             .split(",")
             .mapNotNull { it.trim().toIntOrNull() }
@@ -49,10 +51,10 @@ object DeadlineReminderScheduler {
                     .setInputData(
                         workDataOf(
                             "deadlineId" to deadlineId,
-                            "daysLeft"   to days        // usato nel testo della notifica
+                            "daysLeft"   to days
                         )
                     )
-                    .addTag(UNIQUE_PREFIX + deadlineId) // tag comune → cancel by tag
+                    .addTag(UNIQUE_PREFIX + deadlineId)
                     .build()
 
                 wm.enqueueUniqueWork(
@@ -64,7 +66,7 @@ object DeadlineReminderScheduler {
     }
 
     /**
-     * Cancella TUTTI i preavvisi di una deadline (tutti i days).
+     * Cancella TUTTI i preavvisi di una deadline.
      * Chiamare quando la deadline viene eliminata o segnata come pagata.
      */
     fun cancel(context: Context, deadlineId: Long) {
@@ -72,7 +74,6 @@ object DeadlineReminderScheduler {
             .cancelAllWorkByTag(UNIQUE_PREFIX + deadlineId)
     }
 
-    // Rimasto per compatibilità — mostra notifica immediata (es. per test)
     @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
     fun notifySimple(context: Context, title: String, text: String) {
         ensureChannel(context)
@@ -88,9 +89,7 @@ object DeadlineReminderScheduler {
 
     private fun ensureChannel(context: Context) {
         val channel = NotificationChannel(
-            CHANNEL_ID,
-            "Scadenze",
-            NotificationManager.IMPORTANCE_DEFAULT
+            CHANNEL_ID, "Scadenze", NotificationManager.IMPORTANCE_DEFAULT
         )
         context.getSystemService(NotificationManager::class.java)
             .createNotificationChannel(channel)
