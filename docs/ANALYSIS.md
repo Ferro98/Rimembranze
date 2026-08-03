@@ -15,22 +15,15 @@ section below has been implemented — it's a menu to pick from.
 | Notification permission re-requested on every app launch | `MainActivity.onCreate` | Added a `ContextCompat.checkSelfPermission` guard so the system prompt only fires when the permission isn't already granted. |
 | Silent CSV export failures (and no success feedback either) | `ui/vm/ItemDetailViewModel.writeCsvToUri`, `ui/ItemDetailScreen.kt` | The write was wrapped in a `catch (_: Exception) {}` with no feedback in either direction. Added a `csvExportResult` `StateFlow` (mirroring the existing recurring-payment snackbar pattern) so the user now sees a success or failure snackbar. |
 | Dead/stray code | `data/db/ItemDao.kt` | Removed an unused, unrelated `import android.content.ClipData.Item`. |
+| Full data backup/restore | `data/backup/`, `ui/vm/ItemsViewModel.kt`, `ui/MainScreen.kt` | Added a JSON export/import of everything (items, deadlines, records, appointments), reachable from the drawer, additive to the existing per-item CSV export. Import is merge-only and deduplicated by content (type+name for items, item+category+due-date for deadlines, item+title+date[+amount] for records/appointments) — re-importing the same backup twice is a no-op the second time. |
+| Side drawer content was cut off / not scrollable | `ui/MainScreen.kt` (`NavigationDrawerContent`) | The category list + backup rows sat in a plain, non-scrolling `Column`; once the backup rows were added at the bottom they could become unreachable on shorter screens. The header stays fixed, everything below it now scrolls (`Modifier.weight(1f).verticalScroll(...)`). |
+| Appointment notification doesn't deep-link to the right screen state | `MainActivity.kt`, `VaultApp.kt`, `ui/MainScreen.kt`, `ui/ItemDetailScreen.kt`, `ui/components/AppointmentCard.kt` | `AppointmentReminderWorker` already put an `appointmentId` extra on its `PendingIntent`, but nothing downstream read it. Threaded `initialAppointmentId` through the same chain used for deadlines; `ItemDetailScreen` now auto-selects the "Appuntamenti" tab and scrolls/highlights the matching appointment card. Required flattening the Appuntamenti tab's rendering into proper keyed `LazyColumn` items (it used to be one non-indexed composable) so it could be scrolled to the same way the Scadenze tab already is. |
+| Only one Room migration defined, no fallback | `data/db/AppDatabase.kt` | Added `fallbackToDestructiveMigration(dropAllTables = true)` as a safety net, since the full schema history before `MIGRATION_2_3` isn't tracked. Any install still on an unhandled version now gets a clean (empty) database instead of crashing on every launch. Add explicit migrations here as the schema evolves further, rather than relying on this fallback long-term. |
+| CSV export escaping was minimal | `ui/vm/ItemDetailViewModel.kt` (`buildCsvContent`) | Previously only commas in the notes field were replaced; titles weren't escaped at all and newlines/quotes would produce malformed rows. Every field is now properly RFC4180-escaped (quoted + internal quotes doubled when it contains a comma, quote, or newline) via `csvEscape`/`csvRow` in `ui/vm/ItemDetailLogic.kt`. |
+| No test coverage for stats/recurrence logic | `ui/vm/ItemDetailLogic.kt`, `app/src/test/.../ItemDetailLogicTest.kt` | Extracted `computeItemStats` and `nextRecurrenceDate` out of `ItemDetailViewModel` into plain, Room-free functions and added JVM unit tests covering year-to-date spend, average session cost, recurrence rollover, and CSV escaping. |
 
 ## Known issues not fixed (backlog)
 
-- **Appointment notification doesn't deep-link to the right screen state.** Tapping a deadline
-  notification opens the item and scrolls/highlights the exact deadline
-  (`ItemDetailScreen`'s `scrollToDeadlineId` handling). `AppointmentReminderWorker` puts an
-  `appointmentId` extra on its `PendingIntent`, but `MainActivity` only reads `itemId` and
-  `deadlineId` — the appointment tab isn't even selected automatically. Fixing this properly means
-  threading an `initialAppointmentId` through `MainActivity` → `VaultApp` → `MainScreen` →
-  `ItemDetailScreen` and auto-selecting the "Appuntamenti" tab, which touches several files
-  currently mid-edit — left for a dedicated pass.
-- **Only one Room migration is defined.** `AppDatabase` declares `MIGRATION_2_3` and nothing else,
-  with no `fallbackToDestructiveMigration()`. Any real install still on schema version 1 (i.e. from
-  before the `notes` column and the `appointments` table existed) would crash on open instead of
-  migrating or resetting. Worth confirming no such installs exist, or adding a 1→2 migration /
-  explicit fallback.
 - **Color palette duplication.** `BackgroundDark`, `SurfaceDark`, `AccentAmber`, etc. are defined
   once in `ui/components/SharedComponents.kt` but re-declared locally (same hex values, different
   `private val`s) in `MarkAsPaidDialog.kt` and `AddRecordDialog.kt`. Now that the real palette also
@@ -44,18 +37,11 @@ section below has been implemented — it's a menu to pick from.
   preview is hidden in the recent-apps switcher, with no in-app explanation or way to disable it.
   Reasonable for a privacy-sensitive app, but worth a one-line settings/about mention so it doesn't
   look like a bug to a new user testing screenshots.
-- **CSV export escaping is minimal.** `buildCsvContent` only replaces commas in the notes field;
-  it doesn't quote fields containing newlines or double quotes, so a note with a line break would
-  produce a malformed CSV row.
-- **No real test coverage.** `ExampleUnitTest` and `ExampleInstrumentedTest` are untouched
-  Android Studio boilerplate. Pure-logic code with no tests today: the stats calculation in
-  `ItemDetailViewModel` (year-to-date spend, average session cost) and the recurrence date math in
-  `markAsPaidAndReturnNextDueDate` (monthly/quarterly/semiannual/yearly rollover) — both are good
-  first candidates since they don't need Android/Room to test.
 - **Play Store listing icon.** `ic_launcher-playstore.png` (512×512) appears to have the same
   tight, edge-to-edge bleed as the old adaptive-icon foreground. It isn't used by the installed app
-  (only by the Play Console listing), so it wasn't touched here, but it should be regenerated
-  (with proper padding) whenever a store listing is prepared.
+  (only by the Play Console listing), so it wasn't touched here (no image-editing tooling available
+  in this environment), but it should be regenerated (with proper padding) whenever a store listing
+  is prepared.
 
 ## UI/UX improvement proposals (not implemented)
 
@@ -78,7 +64,7 @@ section below has been implemented — it's a menu to pick from.
   pulsing dot) could use a redundant cue for color-blind users.
 - **Bulk actions.** Deleting records/appointments is one-at-a-time with an inline confirm step.
   For someone cleaning up years of history, a multi-select + bulk delete would help.
-- **Appointment notification deep link.** See the backlog item above — implementing this would
-  bring appointment notifications to parity with deadline notifications.
 - **Localize via `strings.xml`.** Moving the hardcoded Italian strings into resources doesn't
   change behavior today but removes the biggest blocker to ever supporting a second language.
+- **Google-account-linked sync.** The JSON backup format was chosen specifically so a future sync
+  (e.g. Drive-backed) has a stable, structured base to build on without another format migration.
