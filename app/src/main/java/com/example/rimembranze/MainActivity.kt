@@ -21,6 +21,10 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        // Rimembranze contiene dati personali (scadenze mediche, pagamenti, appuntamenti).
+        // FLAG_SECURE blocca screenshot/screen recording e nasconde l'anteprima dell'app
+        // nello switcher "app recenti" — sempre attivo per design, non è un bug e non è
+        // (ancora) disattivabile dall'utente.
         window.setFlags(
             WindowManager.LayoutParams.FLAG_SECURE,
             WindowManager.LayoutParams.FLAG_SECURE

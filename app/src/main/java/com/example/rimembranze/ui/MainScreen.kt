@@ -27,12 +27,22 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.rimembranze.R
 import com.example.rimembranze.data.db.ItemType
+import com.example.rimembranze.ui.components.AccentAmber
+import com.example.rimembranze.ui.components.BackgroundDark
 import com.example.rimembranze.ui.components.DestructiveRed
+import com.example.rimembranze.ui.components.DestructiveRed as AccentRed
+import com.example.rimembranze.ui.components.DividerColor
+import com.example.rimembranze.ui.components.SurfaceDark
+import com.example.rimembranze.ui.components.SurfaceElevated
+import com.example.rimembranze.ui.components.TextPrimary
+import com.example.rimembranze.ui.components.TextSecondary
 import com.example.rimembranze.ui.vm.DashboardViewModel
 import com.example.rimembranze.ui.vm.ItemsViewModel
 import kotlinx.coroutines.launch
@@ -40,15 +50,9 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 // ── Palette ───────────────────────────────────────────────────────────────────
-private val BackgroundDark   = Color(0xFF0F0F13)
-private val SurfaceDark      = Color(0xFF1A1A22)
-private val SurfaceElevated  = Color(0xFF23232E)
+// Colori condivisi importati da ui.components.SharedComponents (unica sorgente di verità).
+// DrawerBackground resta locale: è usato solo qui, non è duplicato altrove.
 private val DrawerBackground = Color(0xFF13131A)
-private val AccentAmber      = Color(0xFFE8A020)
-private val AccentRed        = Color(0xFFE05858)
-private val TextPrimary      = Color(0xFFF0EEE8)
-private val TextSecondary    = Color(0xFF8A8898)
-private val DividerColor     = Color(0xFF2C2C3A)
 
 private fun typeColor(type: ItemType): Color = when (type) {
     ItemType.Veicoli  -> Color(0xFF5B8DEF)
@@ -65,12 +69,13 @@ private fun typeIcon(type: ItemType?): ImageVector = when (type) {
     null              -> Icons.Default.GridView
 }
 
+@Composable
 private fun typeLabel(type: ItemType?): String = when (type) {
-    ItemType.Veicoli  -> "Veicoli"
-    ItemType.Palestra -> "Palestra"
-    ItemType.Medico   -> "Medico"
-    ItemType.Altro    -> "Altro"
-    null              -> "Tutti"
+    ItemType.Veicoli  -> stringResource(R.string.item_type_veicoli)
+    ItemType.Palestra -> stringResource(R.string.item_type_palestra)
+    ItemType.Medico   -> stringResource(R.string.item_type_medico)
+    ItemType.Altro    -> stringResource(R.string.item_type_altro)
+    null              -> stringResource(R.string.item_type_all)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -107,9 +112,13 @@ fun MainScreen(
     val backupImportError   by vm.backupImportError.collectAsState()
     var backupMessage by remember { mutableStateOf<String?>(null) }
 
+    val backupExportSuccessMsg = stringResource(R.string.main_backup_export_success)
+    val backupExportFailureMsg = stringResource(R.string.main_backup_export_failure)
+    val backupImportEmptyMsg   = stringResource(R.string.main_backup_import_empty)
+
     LaunchedEffect(backupExportResult) {
         backupExportResult?.let {
-            backupMessage = if (it) "✓ Backup esportato con successo" else "✗ Esportazione backup fallita"
+            backupMessage = if (it) backupExportSuccessMsg else backupExportFailureMsg
             vm.clearBackupFeedback()
         }
     }
@@ -117,18 +126,19 @@ fun MainScreen(
         backupImportResult?.let { r ->
             val total = r.items + r.deadlines + r.records + r.appointments
             backupMessage = if (total == 0) {
-                "✓ Backup importato — nessuna novità, era tutto già presente"
+                backupImportEmptyMsg
             } else {
-                "✓ Aggiunti: ${r.items} elementi, ${r.deadlines} scadenze, " +
-                        "${r.records} pagamenti, ${r.appointments} appuntamenti " +
-                        "(i doppioni già presenti sono stati saltati)"
+                context.getString(
+                    R.string.main_backup_import_summary,
+                    r.items, r.deadlines, r.records, r.appointments
+                )
             }
             vm.clearBackupFeedback()
         }
     }
     LaunchedEffect(backupImportError) {
         backupImportError?.let {
-            backupMessage = "✗ Importazione fallita: $it"
+            backupMessage = context.getString(R.string.main_backup_import_failure, it)
             vm.clearBackupFeedback()
         }
     }
@@ -222,10 +232,10 @@ fun MainScreen(
             onDismissRequest = { pendingImportUri = null },
             shape = RoundedCornerShape(24.dp), containerColor = SurfaceDark, tonalElevation = 0.dp,
             icon = { Icon(Icons.Default.Restore, null, tint = AccentAmber, modifier = Modifier.size(28.dp)) },
-            title = { Text("Importa backup", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp) },
+            title = { Text(stringResource(R.string.main_import_backup_title), color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp) },
             text = {
                 Text(
-                    "Gli elementi del file verranno aggiunti come nuovi. Nulla di già presente sul dispositivo verrà modificato o cancellato.",
+                    stringResource(R.string.main_import_backup_body),
                     color = TextSecondary, fontSize = 14.sp, lineHeight = 20.sp
                 )
             },
@@ -234,12 +244,12 @@ fun MainScreen(
                     onClick = { vm.importBackupJson(context, uri); pendingImportUri = null },
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = AccentAmber, contentColor = Color(0xFF1A1100))
-                ) { Text("Importa", fontWeight = FontWeight.Bold) }
+                ) { Text(stringResource(R.string.main_import_backup_confirm), fontWeight = FontWeight.Bold) }
             },
             dismissButton = {
                 TextButton(onClick = { pendingImportUri = null }, shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.textButtonColors(contentColor = TextSecondary)
-                ) { Text("Annulla") }
+                ) { Text(stringResource(R.string.action_cancel)) }
             }
         )
     }
@@ -249,13 +259,13 @@ fun MainScreen(
         AlertDialog(
             onDismissRequest = { backupMessage = null },
             shape = RoundedCornerShape(24.dp), containerColor = SurfaceDark, tonalElevation = 0.dp,
-            title = { Text("Backup", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp) },
+            title = { Text(stringResource(R.string.main_backup_result_title), color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp) },
             text = { Text(msg, color = TextSecondary, fontSize = 14.sp, lineHeight = 20.sp) },
             confirmButton = {
                 Button(
                     onClick = { backupMessage = null }, shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = AccentAmber, contentColor = Color(0xFF1A1100))
-                ) { Text("OK", fontWeight = FontWeight.Bold) }
+                ) { Text(stringResource(R.string.action_ok), fontWeight = FontWeight.Bold) }
             }
         )
     }
@@ -347,7 +357,7 @@ private fun MainList(
                                     IconButton(onClick = { scope.launch { drawerState.open() } },
                                         modifier = Modifier.size(40.dp).clip(RoundedCornerShape(12.dp))
                                             .background(SurfaceElevated)) {
-                                        Icon(Icons.Default.Menu, "Apri menu",
+                                        Icon(Icons.Default.Menu, stringResource(R.string.main_open_menu),
                                             tint = TextPrimary, modifier = Modifier.size(20.dp))
                                     }
                                     Spacer(Modifier.width(14.dp))
@@ -364,7 +374,8 @@ private fun MainList(
                                         modifier = Modifier.size(40.dp).clip(RoundedCornerShape(12.dp))
                                             .background(if (searchActive) AccentAmber.copy(alpha = 0.15f) else SurfaceElevated)) {
                                         Icon(if (searchActive) Icons.Default.SearchOff else Icons.Default.Search,
-                                            "Cerca", tint = if (searchActive) AccentAmber else TextPrimary,
+                                            stringResource(if (searchActive) R.string.main_search_off else R.string.main_search),
+                                            tint = if (searchActive) AccentAmber else TextPrimary,
                                             modifier = Modifier.size(18.dp))
                                     }
                                     if (filterType != null) {
@@ -374,7 +385,7 @@ private fun MainList(
                                             .clickable { onFilterType(null) }
                                             .padding(horizontal = 10.dp, vertical = 6.dp)) {
                                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Icon(Icons.Default.Close, "Rimuovi filtro",
+                                                Icon(Icons.Default.Close, stringResource(R.string.main_remove_filter),
                                                     tint = typeColor(filterType), modifier = Modifier.size(12.dp))
                                                 Spacer(Modifier.width(4.dp))
                                                 Text(typeLabel(filterType), color = typeColor(filterType),
@@ -393,7 +404,7 @@ private fun MainList(
                                     OutlinedTextField(
                                         value = searchQuery,
                                         onValueChange = onSearchQuery,
-                                        placeholder = { Text("Cerca per nome o note…", color = TextSecondary) },
+                                        placeholder = { Text(stringResource(R.string.main_search_placeholder), color = TextSecondary) },
                                         singleLine = true,
                                         leadingIcon = { Icon(Icons.Default.Search, null, tint = TextSecondary) },
                                         trailingIcon = {
@@ -426,7 +437,7 @@ private fun MainList(
                                 verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Default.Warning, null, tint = AccentRed, modifier = Modifier.size(14.dp))
                                 Spacer(Modifier.width(6.dp))
-                                Text("PROSSIME SCADENZE", color = TextSecondary, fontSize = 11.sp,
+                                Text(stringResource(R.string.main_upcoming_header), color = TextSecondary, fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold, letterSpacing = 2.sp, modifier = Modifier.weight(1f))
                                 if (upcoming.isNotEmpty()) {
                                     Box(modifier = Modifier.clip(CircleShape)
@@ -445,7 +456,7 @@ private fun MainList(
                                     verticalAlignment = Alignment.CenterVertically) {
                                     Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Color(0xFF3C3C4A)))
                                     Spacer(Modifier.width(12.dp))
-                                    Text("Nessuna scadenza nei prossimi 30 giorni", color = TextSecondary, fontSize = 14.sp)
+                                    Text(stringResource(R.string.main_no_upcoming), color = TextSecondary, fontSize = 14.sp)
                                 }
                             }
                         } else {
@@ -461,7 +472,7 @@ private fun MainList(
                                     verticalAlignment = Alignment.CenterVertically) {
                                     Icon(Icons.Default.Warning, null, tint = AccentRed, modifier = Modifier.size(14.dp))
                                     Spacer(Modifier.width(6.dp))
-                                    Text("SCADUTI", color = TextSecondary, fontSize = 11.sp,
+                                    Text(stringResource(R.string.main_expired_header), color = TextSecondary, fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold, letterSpacing = 2.sp, modifier = Modifier.weight(1f))
                                     Box(modifier = Modifier.clip(CircleShape)
                                         .background(AccentRed.copy(alpha = 0.15f))
@@ -484,7 +495,7 @@ private fun MainList(
                         Row(modifier = Modifier.fillMaxWidth()
                             .padding(horizontal = 20.dp, vertical = 12.dp),
                             verticalAlignment = Alignment.CenterVertically) {
-                            Text("ELEMENTI", color = TextSecondary, fontSize = 11.sp,
+                            Text(stringResource(R.string.main_items_header), color = TextSecondary, fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold, letterSpacing = 2.sp, modifier = Modifier.weight(1f))
                             AnimatedContent(targetState = filteredItems.size,
                                 transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "count_anim") { count ->
@@ -523,7 +534,7 @@ private fun MainList(
                 modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp),
                 containerColor = AccentAmber, contentColor = Color(0xFF1A1100),
                 shape = CircleShape, elevation = FloatingActionButtonDefaults.elevation(8.dp)) {
-                Icon(Icons.Default.Add, "Aggiungi elemento")
+                Icon(Icons.Default.Add, stringResource(R.string.main_add_item_desc))
             }
         }
     }
@@ -532,11 +543,11 @@ private fun MainList(
         AlertDialog(
             onDismissRequest = onDismissAdd,
             shape = RoundedCornerShape(24.dp), containerColor = SurfaceDark, tonalElevation = 0.dp,
-            title = { Text("Nuovo elemento", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp) },
+            title = { Text(stringResource(R.string.main_new_item_title), color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     OutlinedTextField(value = newName, onValueChange = onNewName,
-                        label = { Text("Nome", color = TextSecondary) }, singleLine = true,
+                        label = { Text(stringResource(R.string.main_field_name), color = TextSecondary) }, singleLine = true,
                         shape = RoundedCornerShape(12.dp),
                         colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = AccentAmber,
                             unfocusedBorderColor = DividerColor, focusedTextColor = TextPrimary,
@@ -546,7 +557,7 @@ private fun MainList(
                     ExposedDropdownMenuBox(expanded = typeMenuExpanded,
                         onExpandedChange = { onTypeMenu(!typeMenuExpanded) }, modifier = Modifier.fillMaxWidth()) {
                         OutlinedTextField(value = selectedType.name, onValueChange = {}, readOnly = true,
-                            label = { Text("Tipo", color = TextSecondary) },
+                            label = { Text(stringResource(R.string.main_field_type), color = TextSecondary) },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(typeMenuExpanded) },
                             shape = RoundedCornerShape(12.dp),
                             colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = AccentAmber,
@@ -576,12 +587,12 @@ private fun MainList(
                 Button(onClick = onAddItem, enabled = newName.isNotBlank(), shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = AccentAmber,
                         contentColor = Color(0xFF1A1100), disabledContainerColor = AccentAmber.copy(alpha = 0.3f))
-                ) { Text("Aggiungi", fontWeight = FontWeight.Bold) }
+                ) { Text(stringResource(R.string.main_add), fontWeight = FontWeight.Bold) }
             },
             dismissButton = {
                 TextButton(onClick = onDismissAdd, shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.textButtonColors(contentColor = TextSecondary)
-                ) { Text("Annulla") }
+                ) { Text(stringResource(R.string.action_cancel)) }
             }
         )
     }
@@ -599,7 +610,7 @@ private fun MainEmptyState(isFiltered: Boolean) {
     Box(modifier = Modifier.fillMaxWidth().padding(40.dp).scale(scale), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("✦", color = AccentAmber.copy(alpha = breathAlpha), fontSize = 40.sp)
-            Text(if (isFiltered) "Nessun elemento trovato" else "Nessun elemento.\nAggiungine uno con il +",
+            Text(stringResource(if (isFiltered) R.string.main_no_items_found else R.string.main_no_items_empty),
                 color = TextSecondary, fontSize = 14.sp,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center)
         }
@@ -625,9 +636,9 @@ private fun NavigationDrawerContent(
                     Icon(Icons.Default.Notifications, null, tint = AccentAmber, modifier = Modifier.size(22.dp))
                 }
                 Spacer(Modifier.height(14.dp))
-                Text("Rimembranze", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.app_name), color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(2.dp))
-                Text("$totalCount elementi totali", color = TextSecondary, fontSize = 13.sp)
+                Text(stringResource(R.string.main_items_total, totalCount), color = TextSecondary, fontSize = 13.sp)
             }
         }
         HorizontalDivider(thickness = 0.5.dp, color = DividerColor)
@@ -637,9 +648,9 @@ private fun NavigationDrawerContent(
                 .verticalScroll(rememberScrollState())
         ) {
             Spacer(Modifier.height(12.dp))
-            Text("CATEGORIE", color = TextSecondary, fontSize = 10.sp, fontWeight = FontWeight.Bold,
+            Text(stringResource(R.string.main_categories_header), color = TextSecondary, fontSize = 10.sp, fontWeight = FontWeight.Bold,
                 letterSpacing = 2.sp, modifier = Modifier.padding(start = 24.dp, bottom = 8.dp))
-            DrawerItem(icon = typeIcon(null), label = "Tutti", count = totalCount,
+            DrawerItem(icon = typeIcon(null), label = stringResource(R.string.item_type_all), count = totalCount,
                 color = AccentAmber, isSelected = selectedType == null, onClick = { onSelect(null) })
             Spacer(Modifier.height(4.dp))
             HorizontalDivider(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
@@ -651,11 +662,11 @@ private fun NavigationDrawerContent(
             Spacer(Modifier.height(4.dp))
             HorizontalDivider(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
                 thickness = 0.5.dp, color = DividerColor)
-            Text("DATI", color = TextSecondary, fontSize = 10.sp, fontWeight = FontWeight.Bold,
+            Text(stringResource(R.string.main_data_header), color = TextSecondary, fontSize = 10.sp, fontWeight = FontWeight.Bold,
                 letterSpacing = 2.sp, modifier = Modifier.padding(start = 24.dp, bottom = 8.dp))
-            DrawerItem(icon = Icons.Default.Backup, label = "Esporta backup completo", count = 0,
+            DrawerItem(icon = Icons.Default.Backup, label = stringResource(R.string.main_export_backup), count = 0,
                 color = AccentAmber, isSelected = false, onClick = onExportBackup)
-            DrawerItem(icon = Icons.Default.Restore, label = "Importa da backup", count = 0,
+            DrawerItem(icon = Icons.Default.Restore, label = stringResource(R.string.main_import_backup), count = 0,
                 color = AccentAmber, isSelected = false, onClick = onImportBackup)
             Spacer(Modifier.height(12.dp))
         }
@@ -752,8 +763,11 @@ private fun UpcomingDeadlineRow(category: String, dateEpochMs: Long,
     val daysLate  = if (isExpired) ((System.currentTimeMillis() - dateEpochMs) / (1000L * 60 * 60 * 24)).toInt() else 0
     val rowColor  = if (isExpired) DestructiveRed else AccentAmber
     val bgColor   = if (isExpired) DestructiveRed.copy(alpha = 0.06f) else Color.Transparent
-    val dateLabel = if (isExpired) when (daysLate) { 0 -> "Scaduto oggi"; 1 -> "Scaduto ieri"
-        else -> "Scaduto da $daysLate giorni" } else formatDate(dateEpochMs)
+    val dateLabel = if (isExpired) when (daysLate) {
+        0 -> stringResource(R.string.main_expired_today)
+        1 -> stringResource(R.string.main_expired_yesterday)
+        else -> stringResource(R.string.main_expired_days_ago, daysLate)
+    } else formatDate(dateEpochMs)
 
     Row(modifier = Modifier.fillMaxWidth().background(bgColor).clickable(onClick = onClick)
         .padding(horizontal = 20.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {

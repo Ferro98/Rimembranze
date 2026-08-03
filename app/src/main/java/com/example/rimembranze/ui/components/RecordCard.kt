@@ -14,9 +14,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.rimembranze.R
 import com.example.rimembranze.data.db.RecordEntity
 import com.example.rimembranze.data.db.RecordType
 
@@ -58,7 +60,7 @@ fun RecordCard(
                 InfoChip(label = record.type, value = formatDate(record.dateEpochMs),
                     valueColor = AccentAmberLight, modifier = Modifier.weight(1f))
                 record.amountCents?.let { cents ->
-                    InfoChip(label = "Importo", value = "€${"%.2f".format(cents / 100.0)}",
+                    InfoChip(label = stringResource(R.string.field_amount), value = "€${"%.2f".format(cents / 100.0)}",
                         valueColor = AccentGreen, modifier = Modifier.weight(1f))
                 }
             }
@@ -80,11 +82,11 @@ fun RecordCard(
                             shape = RoundedCornerShape(10.dp),
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = TextSecondary),
                             border = ButtonDefaults.outlinedButtonBorder.copy()
-                        ) { Text("Annulla", fontSize = 13.sp) }
+                        ) { Text(stringResource(R.string.action_cancel), fontSize = 13.sp) }
                         Button(onClick = { onDelete(); deleteConfirm = false }, modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(10.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = DestructiveRed, contentColor = Color.White)
-                        ) { Text("Conferma", fontSize = 13.sp) }
+                        ) { Text(stringResource(R.string.action_confirm), fontSize = 13.sp) }
                     }
                 }
             }
@@ -102,7 +104,7 @@ fun RecordCard(
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                     Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Color(0xFF00AEEF)))
                     Spacer(Modifier.width(8.dp))
-                    Text("Rimborso UniSalute", color = TextSecondary, fontSize = 12.sp,
+                    Text(stringResource(R.string.record_unisalute_label), color = TextSecondary, fontSize = 12.sp,
                         fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
                     Switch(
                         checked = sent,
@@ -121,10 +123,13 @@ fun RecordCard(
                 AnimatedVisibility(visible = sent) {
                     Column {
                         Spacer(Modifier.height(8.dp))
+                        val pendingLabel  = stringResource(R.string.record_unisalute_status_pending)
+                        val approvedLabel = stringResource(R.string.record_unisalute_status_approved)
+                        val rejectedLabel = stringResource(R.string.record_unisalute_status_rejected)
                         val statusOptions = listOf(
-                            "InAttesa"  to "In attesa",
-                            "Approvato" to "Approvato",
-                            "Rifiutato" to "Rifiutato"
+                            "InAttesa"  to pendingLabel,
+                            "Approvato" to approvedLabel,
+                            "Rifiutato" to rejectedLabel
                         )
                         val statusColor = when (status) {
                             "Approvato" -> AccentGreen
@@ -137,9 +142,9 @@ fun RecordCard(
                             onExpandedChange = { statusExpanded = !statusExpanded },
                             modifier = Modifier.fillMaxWidth()) {
                             OutlinedTextField(
-                                value = statusOptions.firstOrNull { it.first == status }?.second ?: "In attesa",
+                                value = statusOptions.firstOrNull { it.first == status }?.second ?: pendingLabel,
                                 onValueChange = {}, readOnly = true,
-                                label = { Text("Stato rimborso", color = TextSecondary, fontSize = 12.sp) },
+                                label = { Text(stringResource(R.string.record_unisalute_status_label), color = TextSecondary, fontSize = 12.sp) },
                                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(statusExpanded) },
                                 leadingIcon = {
                                     Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(statusColor))
@@ -178,7 +183,7 @@ fun RecordCard(
 
                         record.unisaluteSentEpochMs?.let { ms ->
                             Spacer(Modifier.height(4.dp))
-                            Text("Inviato il ${formatDate(ms)}", color = TextSecondary, fontSize = 11.sp)
+                            Text(stringResource(R.string.record_unisalute_sent_on, formatDate(ms)), color = TextSecondary, fontSize = 11.sp)
                         }
                     }
                 }

@@ -45,14 +45,14 @@ class AppointmentReminderWorker(
                 as NotificationManager
 
         nm.createNotificationChannel(
-            NotificationChannel(channelId, "Appuntamenti", NotificationManager.IMPORTANCE_HIGH)
+            NotificationChannel(channelId, applicationContext.getString(R.string.notif_appointments_channel), NotificationManager.IMPORTANCE_HIGH)
         )
 
         nm.notify(
             (appointmentId + 50000L).and(0x7FFFFFFF).toInt(),
             NotificationCompat.Builder(applicationContext, channelId)
                 .setSmallIcon(R.drawable.ic_launcher_foreground)
-                .setContentTitle("Appuntamento tra 1 ora")
+                .setContentTitle(applicationContext.getString(R.string.notif_appointment_title))
                 .setContentText(appointment.title)
                 .setAutoCancel(true)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)

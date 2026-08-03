@@ -19,9 +19,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.rimembranze.R
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -39,11 +41,12 @@ val DividerColor     = Color(0xFF2C2C3A)
 val DestructiveRed   = Color(0xFFE05858)
 
 // ── Reminder options — 4 chip: 14g / 7g / 1g / giorno stesso ─────────────────
-val REMINDER_OPTIONS = listOf(
-    14 to "14 giorni",
-    7  to "7 giorni",
-    1  to "1 giorno",
-    0  to "Stesso giorno"
+@Composable
+fun reminderOptions(): List<Pair<Int, String>> = listOf(
+    14 to stringResource(R.string.reminder_14_days),
+    7  to stringResource(R.string.reminder_7_days),
+    1  to stringResource(R.string.reminder_1_day),
+    0  to stringResource(R.string.reminder_same_day)
 )
 
 fun csvToSet(csv: String): Set<Int> =
@@ -66,21 +69,22 @@ fun formatTimeOnly(epochMs: Long): String =
     SimpleDateFormat("HH:mm", Locale.ITALY).format(Date(epochMs))
 
 // ── Recurrence ────────────────────────────────────────────────────────────────
+@Composable
 fun recurrenceLabel(value: String): String = when (value) {
-    com.example.rimembranze.data.Recurrence.NONE       -> "Nessuna"
-    com.example.rimembranze.data.Recurrence.MONTHLY    -> "Mensile"
-    com.example.rimembranze.data.Recurrence.QUARTERLY  -> "Trimestrale"
-    com.example.rimembranze.data.Recurrence.SEMIANNUAL -> "Semestrale"
-    com.example.rimembranze.data.Recurrence.YEARLY     -> "Annuale"
-    else -> "Nessuna"
+    com.example.rimembranze.data.Recurrence.MONTHLY    -> stringResource(R.string.recurrence_monthly)
+    com.example.rimembranze.data.Recurrence.QUARTERLY  -> stringResource(R.string.recurrence_quarterly)
+    com.example.rimembranze.data.Recurrence.SEMIANNUAL -> stringResource(R.string.recurrence_semiannual)
+    com.example.rimembranze.data.Recurrence.YEARLY     -> stringResource(R.string.recurrence_yearly)
+    else -> stringResource(R.string.recurrence_none)
 }
 
-val recurrenceOptions = listOf(
-    com.example.rimembranze.data.Recurrence.NONE       to "Nessuna",
-    com.example.rimembranze.data.Recurrence.MONTHLY    to "Mensile",
-    com.example.rimembranze.data.Recurrence.QUARTERLY  to "Trimestrale",
-    com.example.rimembranze.data.Recurrence.SEMIANNUAL to "Semestrale",
-    com.example.rimembranze.data.Recurrence.YEARLY     to "Annuale"
+@Composable
+fun recurrenceOptions(): List<Pair<String, String>> = listOf(
+    com.example.rimembranze.data.Recurrence.NONE       to stringResource(R.string.recurrence_none),
+    com.example.rimembranze.data.Recurrence.MONTHLY    to stringResource(R.string.recurrence_monthly),
+    com.example.rimembranze.data.Recurrence.QUARTERLY  to stringResource(R.string.recurrence_quarterly),
+    com.example.rimembranze.data.Recurrence.SEMIANNUAL to stringResource(R.string.recurrence_semiannual),
+    com.example.rimembranze.data.Recurrence.YEARLY     to stringResource(R.string.recurrence_yearly)
 )
 
 // ── TabCard con contatore animato ─────────────────────────────────────────────
@@ -243,7 +247,7 @@ fun AppointmentInfoChip(
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.Center
     ) {
-        Text("Data", color = TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+        Text(stringResource(R.string.shared_date_label), color = TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Medium)
         Spacer(Modifier.height(2.dp))
         Text(formatDateOnly(epochMs), color = valueColor, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
         Text(formatTimeOnly(epochMs), color = valueColor, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
@@ -275,7 +279,7 @@ fun MancaInfoChip(
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.Center
     ) {
-        Text("Manca", color = TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+        Text(stringResource(R.string.shared_manca_label), color = TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Medium)
         Spacer(Modifier.height(2.dp))
         Text(main, color = valueColor, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
         if (sub.isNotEmpty()) Text(sub, color = valueColor, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)

@@ -89,7 +89,7 @@ object DeadlineReminderScheduler {
 
     private fun ensureChannel(context: Context) {
         val channel = NotificationChannel(
-            CHANNEL_ID, "Scadenze", NotificationManager.IMPORTANCE_DEFAULT
+            CHANNEL_ID, context.getString(R.string.notif_deadlines_channel), NotificationManager.IMPORTANCE_DEFAULT
         )
         context.getSystemService(NotificationManager::class.java)
             .createNotificationChannel(channel)
