@@ -24,14 +24,12 @@ section below has been implemented — it's a menu to pick from.
 | Color palette duplication | `ui/MainScreen.kt`, `ui/MarkAsPaidDialog.kt`, `ui/AddRecordDialog.kt`, `ui/BatteryOptimizationHelper.kt` | These files each re-declared their own private copies of the same colors already defined once in `ui/components/SharedComponents.kt`. Removed the duplicates and imported the canonical ones instead (aliasing `DestructiveRed` as `AccentRed` in `MainScreen.kt` to avoid renaming every call site). No visual change — same hex values, one source of truth now. |
 | `FLAG_SECURE` unexplained | `MainActivity.kt` | Added a comment above the `window.setFlags(FLAG_SECURE, ...)` call explaining it's intentional (blocks screenshots/recents-preview for a privacy-sensitive app), not a bug. |
 | No localization path | `res/values/strings.xml`, every `ui/*.kt` and `notifications`/`worker` file | Every user-facing string (labels, buttons, dialog text, notification text, item-type/recurrence/reminder labels) is now a resource, referenced via `stringResource()` in Composables and `context.getString()` in the ViewModel/worker/scheduler code that isn't composable. `REMINDER_OPTIONS`/`recurrenceOptions`/`recurrenceLabel` in `SharedComponents.kt` became `@Composable` functions (were plain top-level `val`/`fun`) since building the list now requires a composition context. Left untouched, by design: the CSV export header/rows in `ItemDetailViewModel.buildCsvContent` (no Context available there without further plumbing) and the "Dom"/"ani" string-splitting trick in `SharedComponents.MancaInfoChip` (Italian-specific word-splitting logic, not translatable copy — it still works correctly because the resource strings it depends on are unchanged Italian text). |
+| Play Store listing icon had the same edge-to-edge bleed | `app/src/main/ic_launcher-playstore.png` | Regenerated as a proper 512×512 square (Play Store applies its own rounded-square mask on top, so the source image should stay a plain full-bleed square) with the same checkmark-and-bar glyph as the launcher icon, scaled and centered with real padding this time. Built with .NET's `System.Drawing` via PowerShell — no image-editing tool needed, just draws the same vector path at 512px scale. |
 
 ## Known issues not fixed (backlog)
 
-- **Play Store listing icon.** `ic_launcher-playstore.png` (512×512) appears to have the same
-  tight, edge-to-edge bleed as the old adaptive-icon foreground. It isn't used by the installed app
-  (only by the Play Console listing), so it wasn't touched here (no image-editing tooling available
-  in this environment), but it should be regenerated (with proper padding) whenever a store listing
-  is prepared.
+Nothing outstanding from the original review — see the UI/UX proposals below for further, optional
+work the user can choose from.
 
 ## UI/UX improvement proposals (not implemented)
 
