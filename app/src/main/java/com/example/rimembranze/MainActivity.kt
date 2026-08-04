@@ -9,6 +9,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import com.example.rimembranze.notifications.PendingInvoiceReminderScheduler
 import com.example.rimembranze.ui.theme.RimembranzeTheme
 
 class MainActivity : ComponentActivity() {
@@ -36,6 +37,10 @@ class MainActivity : ComponentActivity() {
         ) {
             notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
         }
+
+        // Idempotente: ExistingPeriodicWorkPolicy.KEEP fa sì che il controllo settimanale
+        // delle sedute da fatturare venga schedulato una volta sola, non ad ogni avvio.
+        PendingInvoiceReminderScheduler.ensureScheduled(this)
 
         // Legge gli extra inviati dal PendingIntent della notifica
         // Sia al primo avvio (onCreate) sia quando l'app è già aperta (onNewIntent)

@@ -45,6 +45,10 @@ interface AppointmentDao {
     @Query("SELECT * FROM appointments WHERE id = :id LIMIT 1")
     suspend fun getById(id: Long): AppointmentEntity?
 
+    // Effettuati ma non ancora pagati, su tutti gli item — usato dal promemoria periodico
+    @Query("SELECT * FROM appointments WHERE isDone = 1 AND isPaid = 0")
+    suspend fun getAllDoneNotPaid(): List<AppointmentEntity>
+
     @Insert
     suspend fun insert(appointment: AppointmentEntity): Long
 

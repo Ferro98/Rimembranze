@@ -16,12 +16,19 @@ lives in an on-device database — there is no account, no backend, and no netwo
   invoiced vs. still pending, and generate an invoice from a batch of completed-but-unpaid
   sessions.
 - **Payment records** — a running history of payments/visits per item, including optional
-  insurance-reimbursement tracking (status: pending/approved/rejected).
+  insurance-reimbursement tracking (status: pending/approved/rejected). Bulk multi-select delete
+  is available for cleaning up old history.
 - **Stats** — per-item spend this year, total spend, session count, and average session cost.
+- **Search** — the main list's search matches item name/notes as well as deadline categories and
+  appointment titles.
 - **Reminders** — local notifications scheduled with WorkManager, surviving app restarts, with
-  tap-to-open deep links back into the relevant item.
+  tap-to-open deep links back into the relevant item/appointment. A weekly background check also
+  flags appointments completed but still unbilled for more than a week.
 - **CSV export** — export an item's full payment/appointment history to a CSV file via the
   system's document picker.
+- **Full backup/restore** — export everything (items, deadlines, records, appointments) to a
+  single JSON file and re-import it on another device; import is additive and deduplicated by
+  content, so re-importing the same backup is always safe.
 - **Privacy** — the app window is flagged `FLAG_SECURE` (blocks screenshots and hides content in
   the recent-apps switcher); all data stays in the local Room database.
 
@@ -40,7 +47,8 @@ lives in an on-device database — there is no account, no backend, and no netwo
 app/src/main/java/com/example/rimembranze/
 ├── data/
 │   ├── db/            Room entities, DAOs, AppDatabase, type converters, migrations
-│   └── repository/     Thin repository layer over the DAOs
+│   ├── repository/     Thin repository layer over the DAOs
+│   └── backup/          JSON export/import (BackupManager, BackupModels)
 ├── notifications/      Schedulers that enqueue WorkManager requests for reminders
 ├── worker/             CoroutineWorkers that build and post the actual notifications
 ├── ui/
