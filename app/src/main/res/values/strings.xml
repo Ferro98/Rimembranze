@@ -173,4 +173,8 @@
     <string name="notif_deadline_due_tomorrow">Scade domani</string>
     <string name="notif_deadline_due_in_days">Scade tra %1$d giorni</string>
     <string name="notif_appointment_title">Appuntamento tra 1 ora</string>
+    <string name="notif_pending_invoice_channel">Fatture in sospeso</string>
+    <string name="notif_pending_invoice_title">Sedute da fatturare</string>
+    <string name="notif_pending_invoice_body">Hai %1$d sedute in attesa di fattura da più di una settimana</string>
+    <string name="notif_pending_invoice_body_with_amount">Hai %1$d sedute da fatturare (€%2$s) in attesa da più di una settimana</string>
 </resources>
