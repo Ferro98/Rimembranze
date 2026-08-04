@@ -25,6 +25,8 @@ section below has been implemented — it's a menu to pick from.
 | `FLAG_SECURE` unexplained | `MainActivity.kt` | Added a comment above the `window.setFlags(FLAG_SECURE, ...)` call explaining it's intentional (blocks screenshots/recents-preview for a privacy-sensitive app), not a bug. |
 | No localization path | `res/values/strings.xml`, every `ui/*.kt` and `notifications`/`worker` file | Every user-facing string (labels, buttons, dialog text, notification text, item-type/recurrence/reminder labels) is now a resource, referenced via `stringResource()` in Composables and `context.getString()` in the ViewModel/worker/scheduler code that isn't composable. `REMINDER_OPTIONS`/`recurrenceOptions`/`recurrenceLabel` in `SharedComponents.kt` became `@Composable` functions (were plain top-level `val`/`fun`) since building the list now requires a composition context. Left untouched, by design: the CSV export header/rows in `ItemDetailViewModel.buildCsvContent` (no Context available there without further plumbing) and the "Dom"/"ani" string-splitting trick in `SharedComponents.MancaInfoChip` (Italian-specific word-splitting logic, not translatable copy — it still works correctly because the resource strings it depends on are unchanged Italian text). |
 | Play Store listing icon had the same edge-to-edge bleed | `app/src/main/ic_launcher-playstore.png` | Regenerated as a proper 512×512 square (Play Store applies its own rounded-square mask on top, so the source image should stay a plain full-bleed square) with the same checkmark-and-bar glyph as the launcher icon, scaled and centered with real padding this time. Built with .NET's `System.Drawing` via PowerShell — no image-editing tool needed, just draws the same vector path at 512px scale. |
+| Search only matched item name/notes | `ui/MainScreen.kt`, `ui/vm/ItemsViewModel.kt`, `data/db/DeadlineDao.kt`, `data/db/AppointmentDao.kt` | Added reactive `observeAll()` queries on both DAOs, threaded into `ItemsUiState` (deadlines/appointments snapshots across all items). The main list's search now also matches deadline category and appointment title, showing the parent item if either matches — not just item name/notes. |
+| Bulk deleting records/appointment history was one-at-a-time | `ui/ItemDetailScreen.kt`, `ui/components/RecordCard.kt`, `ui/components/AppointmentCard.kt`, `ui/components/SharedComponents.kt` | Added an optional selection mode (toggled from a new icon in `SectionHeader`, which now supports a `trailing` slot) to the "STORICO PAGAMENTI" and "STORICO SEDUTE" sections: cards show a checkbox and the whole card becomes tappable to select, a bar shows the count with a delete button, and a confirmation dialog (same pattern as single-item delete) runs the batch delete. |
 
 ## Known issues not fixed (backlog)
 
@@ -41,9 +43,6 @@ work the user can choose from.
 - **Decide on light mode.** Right now the app is dark-only regardless of the system setting; either
   embrace that explicitly (remove the now-unused light-theme machinery entirely, which this pass
   already simplified) or build a real light variant of the palette.
-- **Broaden search.** The search bar on the main list only matches item name/notes. Extending it to
-  also match deadline categories and appointment titles would make it useful for "when's my next
-  X" lookups, not just "which item is X".
 - **Home-level summary.** Stats currently exist only per-item (`StatsStrip` in
   `ItemDetailScreen`). A small dashboard card on the main list (e.g. total upcoming spend across
   all items this month) would surface the same data at the point where it's most actionable.
@@ -52,8 +51,6 @@ work the user can choose from.
   worth an audit. Urgency is communicated mostly through color (amber/red dots and text) — most
   rows do pair it with text labels already, but a couple of pure color-only accents (e.g. the
   pulsing dot) could use a redundant cue for color-blind users.
-- **Bulk actions.** Deleting records/appointments is one-at-a-time with an inline confirm step.
-  For someone cleaning up years of history, a multi-select + bulk delete would help.
 - **Add a second language.** With strings now in `strings.xml`, adding e.g. an English
   `values-en/strings.xml` is a translation task, not a refactor.
 - **Google-account-linked sync.** The JSON backup format was chosen specifically so a future sync

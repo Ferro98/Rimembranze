@@ -13,6 +13,10 @@ interface DeadlineDao {
     @Query("SELECT * FROM deadlines WHERE itemId = :itemId ORDER BY dueDateEpochMs ASC")
     fun observeByItem(itemId: Long): Flow<List<DeadlineEntity>>
 
+    // Tutte le scadenze di tutti gli item — usato per la ricerca nella lista principale
+    @Query("SELECT * FROM deadlines")
+    fun observeAll(): Flow<List<DeadlineEntity>>
+
     // Snapshot one-shot per l'export/import del backup completo
     @Query("SELECT * FROM deadlines")
     suspend fun getAllOnce(): List<DeadlineEntity>

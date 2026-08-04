@@ -168,7 +168,12 @@ fun FabOption(
 
 // ── SectionHeader ─────────────────────────────────────────────────────────────
 @Composable
-fun SectionHeader(title: String, count: Int, accentColor: Color = AccentAmber) {
+fun SectionHeader(
+    title: String,
+    count: Int,
+    accentColor: Color = AccentAmber,
+    trailing: (@Composable () -> Unit)? = null
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -181,6 +186,7 @@ fun SectionHeader(title: String, count: Int, accentColor: Color = AccentAmber) {
             modifier = Modifier.weight(1f)
         )
         Text("$count", color = accentColor, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        trailing?.invoke()
     }
     HorizontalDivider(color = DividerColor, thickness = 0.5.dp)
 }

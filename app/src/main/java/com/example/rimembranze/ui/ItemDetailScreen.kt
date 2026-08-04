@@ -87,6 +87,14 @@ fun ItemDetailScreen(
     var hasScrolledAppointment     by remember { mutableStateOf(false) }
     var activeHighlightAppointment by remember { mutableStateOf(scrollToAppointmentId) }
 
+    // ── Selezione multipla / eliminazione bulk ───────────────────────────────
+    var recordsSelectionMode   by remember { mutableStateOf(false) }
+    var selectedRecordIds      by remember { mutableStateOf(setOf<Long>()) }
+    var historySelectionMode   by remember { mutableStateOf(false) }
+    var selectedHistoryApptIds by remember { mutableStateOf(setOf<Long>()) }
+    var confirmBulkDelete      by remember { mutableStateOf<(() -> Unit)?>(null) }
+    var confirmBulkDeleteCount by remember { mutableStateOf(0) }
+
     // Scroll + highlight scadenza
     LaunchedEffect(scrollToDeadlineId, state.deadlines) {
         if (scrollToDeadlineId == null || hasScrolled || state.deadlines.isEmpty()) return@LaunchedEffect
@@ -276,13 +284,70 @@ fun ItemDetailScreen(
                                 }
                             }
                             item(key = "spacer_records") { Spacer(Modifier.height(10.dp)) }
-                            item(key = "sec_records") { SectionHeader(stringResource(R.string.detail_payment_history_header), state.records.size) }
+                            item(key = "sec_records") {
+                                SectionHeader(
+                                    stringResource(R.string.detail_payment_history_header), state.records.size,
+                                    trailing = {
+                                        if (state.records.isNotEmpty()) {
+                                            IconButton(
+                                                onClick = {
+                                                    recordsSelectionMode = !recordsSelectionMode
+                                                    selectedRecordIds = emptySet()
+                                                },
+                                                modifier = Modifier.padding(start = 8.dp).size(24.dp)
+                                            ) {
+                                                Icon(
+                                                    if (recordsSelectionMode) Icons.Default.Close else Icons.Default.Checklist,
+                                                    contentDescription = stringResource(
+                                                        if (recordsSelectionMode) R.string.bulk_exit_selection else R.string.bulk_enter_selection
+                                                    ),
+                                                    tint = TextSecondary, modifier = Modifier.size(16.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                )
+                            }
+                            if (recordsSelectionMode && selectedRecordIds.isNotEmpty()) {
+                                item(key = "records_bulk_bar") {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(stringResource(R.string.bulk_selected_count, selectedRecordIds.size),
+                                            color = TextSecondary, fontSize = 13.sp)
+                                        Button(
+                                            onClick = {
+                                                val ids = selectedRecordIds
+                                                confirmBulkDeleteCount = ids.size
+                                                confirmBulkDelete = {
+                                                    state.records.filter { it.id in ids }.forEach { vm.deleteRecord(it) }
+                                                    selectedRecordIds = emptySet()
+                                                    recordsSelectionMode = false
+                                                }
+                                            },
+                                            shape = RoundedCornerShape(10.dp),
+                                            colors = ButtonDefaults.buttonColors(containerColor = DestructiveRed, contentColor = Color.White)
+                                        ) {
+                                            Icon(Icons.Default.Delete, null, modifier = Modifier.size(15.dp))
+                                            Spacer(Modifier.width(6.dp))
+                                            Text(stringResource(R.string.action_delete), fontSize = 13.sp)
+                                        }
+                                    }
+                                }
+                            }
                             if (state.records.isEmpty()) {
                                 item(key = "empty_records") { EmptyState(stringResource(R.string.detail_no_records), "💳") }
                             } else {
                                 items(state.records, key = { "rec_${it.id}" }) { r ->
                                     RecordCard(record = r, onDelete = { vm.deleteRecord(r) },
-                                        onUpdateUniSalute = { s, st, ms -> vm.updateRecordUniSalute(r, s, st, ms) })
+                                        onUpdateUniSalute = { s, st, ms -> vm.updateRecordUniSalute(r, s, st, ms) },
+                                        selectionMode = recordsSelectionMode,
+                                        isSelected = r.id in selectedRecordIds,
+                                        onToggleSelect = {
+                                            selectedRecordIds = if (r.id in selectedRecordIds) selectedRecordIds - r.id else selectedRecordIds + r.id
+                                        })
                                 }
                             }
                         }
@@ -368,7 +433,62 @@ fun ItemDetailScreen(
                             }
 
                             item(key = "spacer_history") { Spacer(Modifier.height(10.dp)) }
-                            item(key = "sec_history") { SectionHeader(stringResource(R.string.detail_history_header), state.appointmentsPaid.size, AccentBlue) }
+                            item(key = "sec_history") {
+                                SectionHeader(
+                                    stringResource(R.string.detail_history_header), state.appointmentsPaid.size, AccentBlue,
+                                    trailing = {
+                                        if (state.appointmentsPaid.isNotEmpty()) {
+                                            IconButton(
+                                                onClick = {
+                                                    historySelectionMode = !historySelectionMode
+                                                    selectedHistoryApptIds = emptySet()
+                                                },
+                                                modifier = Modifier.padding(start = 8.dp).size(24.dp)
+                                            ) {
+                                                Icon(
+                                                    if (historySelectionMode) Icons.Default.Close else Icons.Default.Checklist,
+                                                    contentDescription = stringResource(
+                                                        if (historySelectionMode) R.string.bulk_exit_selection else R.string.bulk_enter_selection
+                                                    ),
+                                                    tint = TextSecondary, modifier = Modifier.size(16.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                )
+                            }
+                            if (historySelectionMode && selectedHistoryApptIds.isNotEmpty()) {
+                                item(key = "history_bulk_bar") {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(stringResource(R.string.bulk_selected_count, selectedHistoryApptIds.size),
+                                            color = TextSecondary, fontSize = 13.sp)
+                                        Button(
+                                            onClick = {
+                                                val ids = selectedHistoryApptIds
+                                                confirmBulkDeleteCount = ids.size
+                                                confirmBulkDelete = {
+                                                    state.appointmentsPaid.filter { it.id in ids }.forEach {
+                                                        vm.deleteAppointment(it)
+                                                        AppointmentReminderScheduler.cancel(context, it.id)
+                                                    }
+                                                    selectedHistoryApptIds = emptySet()
+                                                    historySelectionMode = false
+                                                }
+                                            },
+                                            shape = RoundedCornerShape(10.dp),
+                                            colors = ButtonDefaults.buttonColors(containerColor = DestructiveRed, contentColor = Color.White)
+                                        ) {
+                                            Icon(Icons.Default.Delete, null, modifier = Modifier.size(15.dp))
+                                            Spacer(Modifier.width(6.dp))
+                                            Text(stringResource(R.string.action_delete), fontSize = 13.sp)
+                                        }
+                                    }
+                                }
+                            }
                             if (state.appointmentsPaid.isEmpty()) {
                                 item(key = "empty_history") { EmptyState(stringResource(R.string.detail_no_completed_appointments), "✓") }
                             } else {
@@ -376,7 +496,12 @@ fun ItemDetailScreen(
                                     AppointmentDoneCard(appointment = a, showPaidBadge = true, onDelete = {
                                         vm.deleteAppointment(a)
                                         AppointmentReminderScheduler.cancel(context, a.id)
-                                    })
+                                    },
+                                        selectionMode = historySelectionMode,
+                                        isSelected = a.id in selectedHistoryApptIds,
+                                        onToggleSelect = {
+                                            selectedHistoryApptIds = if (a.id in selectedHistoryApptIds) selectedHistoryApptIds - a.id else selectedHistoryApptIds + a.id
+                                        })
                                 }
                             }
                         }
@@ -512,6 +637,34 @@ fun ItemDetailScreen(
                 }
             )
         }
+    }
+
+    confirmBulkDelete?.let { doDelete ->
+        AlertDialog(
+            onDismissRequest = { confirmBulkDelete = null },
+            shape = RoundedCornerShape(24.dp), containerColor = SurfaceDark, tonalElevation = 0.dp,
+            icon = { Icon(Icons.Default.Warning, null, tint = DestructiveRed, modifier = Modifier.size(32.dp)) },
+            title = { Text(stringResource(R.string.bulk_delete_confirm_title), color = TextPrimary,
+                fontWeight = FontWeight.Bold, fontSize = 20.sp, textAlign = TextAlign.Center) },
+            text = {
+                Text(stringResource(R.string.bulk_delete_confirm_body, confirmBulkDeleteCount),
+                    color = TextSecondary, fontSize = 14.sp, textAlign = TextAlign.Center)
+            },
+            confirmButton = {
+                Button(onClick = { doDelete(); confirmBulkDelete = null },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = DestructiveRed, contentColor = Color.White),
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text(stringResource(R.string.action_delete), fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmBulkDelete = null },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.textButtonColors(contentColor = TextSecondary),
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text(stringResource(R.string.action_cancel)) }
+            }
+        )
     }
 }
 

@@ -313,14 +313,27 @@ private fun MainList(
     val availableTypes: List<ItemType?> = listOf(null) +
             ItemType.entries.filter { t -> state.items.any { it.type == t } }
 
-    val filteredItems = remember(state.items, filterType, searchQuery) {
+    val filteredItems = remember(state.items, filterType, searchQuery, state.deadlines, state.appointments) {
         state.items
             .let { if (filterType == null) it else it.filter { i -> i.type == filterType } }
             .let { list ->
                 if (searchQuery.isBlank()) list
-                else list.filter { i ->
-                    i.name.contains(searchQuery, ignoreCase = true) ||
-                            i.notes?.contains(searchQuery, ignoreCase = true) == true
+                else {
+                    // Un item combacia anche se una sua scadenza (categoria) o un suo
+                    // appuntamento (titolo) contiene la query, non solo nome/note dell'item
+                    val matchingItemIds = buildSet {
+                        state.deadlines.filterTo(mutableListOf()) {
+                            it.category.contains(searchQuery, ignoreCase = true)
+                        }.forEach { add(it.itemId) }
+                        state.appointments.filterTo(mutableListOf()) {
+                            it.title.contains(searchQuery, ignoreCase = true)
+                        }.forEach { add(it.itemId) }
+                    }
+                    list.filter { i ->
+                        i.name.contains(searchQuery, ignoreCase = true) ||
+                                i.notes?.contains(searchQuery, ignoreCase = true) == true ||
+                                i.id in matchingItemIds
+                    }
                 }
             }
     }

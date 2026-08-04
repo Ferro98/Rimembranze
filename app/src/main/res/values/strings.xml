@@ -35,7 +35,7 @@
     <string name="main_search">Cerca</string>
     <string name="main_search_off">Chiudi ricerca</string>
     <string name="main_remove_filter">Rimuovi filtro</string>
-    <string name="main_search_placeholder">Cerca per nome o note…</string>
+    <string name="main_search_placeholder">Cerca per nome, note, scadenza o appuntamento…</string>
     <string name="main_upcoming_header">PROSSIME SCADENZE</string>
     <string name="main_no_upcoming">Nessuna scadenza nei prossimi 30 giorni</string>
     <string name="main_expired_header">SCADUTI</string>
@@ -92,6 +92,11 @@
     <string name="detail_stat_total_spent">Totale speso</string>
     <string name="detail_stat_sessions">Sedute</string>
     <string name="detail_stat_avg_session">Media seduta</string>
+    <string name="bulk_enter_selection">Seleziona più elementi</string>
+    <string name="bulk_exit_selection">Annulla selezione</string>
+    <string name="bulk_selected_count">%1$d selezionati</string>
+    <string name="bulk_delete_confirm_title">Elimina selezionati</string>
+    <string name="bulk_delete_confirm_body">Vuoi eliminare %1$d elementi selezionati? Operazione non reversibile.</string>
 
     <!-- Shared: reminder / recurrence chips -->
     <string name="reminder_14_days">14 giorni</string>

@@ -26,31 +26,48 @@ import com.example.rimembranze.data.db.RecordType
 fun RecordCard(
     record: RecordEntity,
     onDelete: () -> Unit,
-    onUpdateUniSalute: (sent: Boolean, status: String?, sentEpochMs: Long?) -> Unit
+    onUpdateUniSalute: (sent: Boolean, status: String?, sentEpochMs: Long?) -> Unit,
+    selectionMode: Boolean = false,
+    isSelected: Boolean = false,
+    onToggleSelect: (() -> Unit)? = null
 ) {
     var deleteConfirm by remember { mutableStateOf(false) }
 
     Card(
+        onClick = { if (selectionMode) onToggleSelect?.invoke() },
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfaceDark),
+        colors = CardDefaults.cardColors(
+            containerColor = if (selectionMode && isSelected) AccentAmber.copy(alpha = 0.08f) else SurfaceDark
+        ),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(
-                    when (record.type) {
-                        RecordType.Pagamento.name -> AccentAmber
-                        RecordType.Visita.name    -> AccentGreen
-                        else                      -> Color(0xFFBF5BEF)
-                    }))
-                Spacer(Modifier.width(10.dp))
+                if (selectionMode) {
+                    Checkbox(
+                        checked = isSelected,
+                        onCheckedChange = { onToggleSelect?.invoke() },
+                        colors = CheckboxDefaults.colors(checkedColor = AccentAmber, uncheckedColor = TextSecondary)
+                    )
+                    Spacer(Modifier.width(4.dp))
+                } else {
+                    Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(
+                        when (record.type) {
+                            RecordType.Pagamento.name -> AccentAmber
+                            RecordType.Visita.name    -> AccentGreen
+                            else                      -> Color(0xFFBF5BEF)
+                        }))
+                    Spacer(Modifier.width(10.dp))
+                }
                 Text(record.title, color = TextPrimary, fontWeight = FontWeight.SemiBold,
                     fontSize = 16.sp, modifier = Modifier.weight(1f))
-                IconButton(onClick = { deleteConfirm = true }, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.Delete, contentDescription = null,
-                        tint = if (deleteConfirm) DestructiveRed else TextSecondary,
-                        modifier = Modifier.size(16.dp))
+                if (!selectionMode) {
+                    IconButton(onClick = { deleteConfirm = true }, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Default.Delete, contentDescription = null,
+                            tint = if (deleteConfirm) DestructiveRed else TextSecondary,
+                            modifier = Modifier.size(16.dp))
+                    }
                 }
             }
 
@@ -91,7 +108,7 @@ fun RecordCard(
                 }
             }
 
-            if (!deleteConfirm &&
+            if (!selectionMode && !deleteConfirm &&
                 (record.type == RecordType.Visita.name || record.type == RecordType.Pagamento.name)) {
                 Spacer(Modifier.height(10.dp))
                 HorizontalDivider(thickness = 0.5.dp, color = DividerColor)
