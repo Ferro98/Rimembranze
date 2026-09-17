@@ -39,12 +39,17 @@ import com.example.rimembranze.ui.components.BackgroundDark
 import com.example.rimembranze.ui.components.DestructiveRed
 import com.example.rimembranze.ui.components.DestructiveRed as AccentRed
 import com.example.rimembranze.ui.components.DividerColor
+import com.example.rimembranze.ui.components.HomeSummaryCard
 import com.example.rimembranze.ui.components.SurfaceDark
 import com.example.rimembranze.ui.components.SurfaceElevated
 import com.example.rimembranze.ui.components.TextPrimary
 import com.example.rimembranze.ui.components.TextSecondary
 import com.example.rimembranze.ui.vm.DashboardViewModel
+import com.example.rimembranze.ui.vm.HomeDashboardStats
 import com.example.rimembranze.ui.vm.ItemsViewModel
+import com.example.rimembranze.ui.vm.computeHomeDashboardStats
+import com.example.rimembranze.ui.vm.currentMonthEndEpochMs
+import com.example.rimembranze.ui.vm.currentMonthStartEpochMs
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -92,6 +97,16 @@ fun MainScreen(
     val dashboardVm: DashboardViewModel = viewModel()
     val upcoming by dashboardVm.upcoming.collectAsState()
     val expired  by dashboardVm.expired.collectAsState()
+
+    val homeStats: HomeDashboardStats = remember(state.records, state.appointments, upcoming) {
+        computeHomeDashboardStats(
+            records           = state.records,
+            appointments      = state.appointments,
+            upcomingDeadlines = upcoming,
+            monthStartEpochMs = currentMonthStartEpochMs(),
+            monthEndEpochMs   = currentMonthEndEpochMs()
+        )
+    }
 
     val context = LocalContext.current
     val drawerState = rememberDrawerState(DrawerValue.Closed)
@@ -184,6 +199,7 @@ fun MainScreen(
         } else {
             MainList(
                 state            = state,
+                homeStats        = homeStats,
                 upcoming         = upcoming,
                 expired          = expired,
                 filterType       = filterType,
@@ -279,6 +295,7 @@ fun MainScreen(
 @Composable
 private fun MainList(
     state: com.example.rimembranze.ui.vm.ItemsUiState,
+    homeStats: HomeDashboardStats,
     upcoming: List<com.example.rimembranze.data.db.DeadlineEntity>,
     expired: List<com.example.rimembranze.data.db.DeadlineEntity>,
     filterType: ItemType?,
@@ -439,6 +456,18 @@ private fun MainList(
                                     )
                                 }
                             }
+                        }
+                    }
+
+                    // ── Riepilogo home (solo senza ricerca attiva) ───────────
+                    if (!searchActive && filterType == null &&
+                        (homeStats.spentThisMonthCents > 0L || homeStats.upcomingEstimatedCents > 0L)
+                    ) {
+                        item {
+                            HomeSummaryCard(
+                                homeStats,
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp)
+                            )
                         }
                     }
 

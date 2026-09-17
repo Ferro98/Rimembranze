@@ -9,6 +9,10 @@ interface RecordDao {
     @Query("SELECT * FROM records WHERE itemId = :itemId ORDER BY dateEpochMs DESC, id DESC")
     fun observeByItem(itemId: Long): Flow<List<RecordEntity>>
 
+    // Tutti i pagamenti di tutti gli item — usato dal riepilogo home
+    @Query("SELECT * FROM records")
+    fun observeAll(): Flow<List<RecordEntity>>
+
     // Snapshot one-shot per l'export/import del backup completo
     @Query("SELECT * FROM records")
     suspend fun getAllOnce(): List<RecordEntity>

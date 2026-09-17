@@ -1,6 +1,7 @@
 package com.example.rimembranze.ui.vm
 
 import com.example.rimembranze.data.db.AppointmentEntity
+import com.example.rimembranze.data.db.DeadlineEntity
 import com.example.rimembranze.data.db.RecordEntity
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -91,5 +92,43 @@ class ItemDetailLogicTest {
     @Test
     fun `csv row joins escaped fields with commas`() {
         assertEquals("a,\"b,c\",d", csvRow(listOf("a", "b,c", "d")))
+    }
+
+    // ── computeHomeDashboardStats ──────────────────────────────────────────────
+
+    @Test
+    fun `home dashboard sums this-month records and paid appointments across items, ignores other months`() {
+        val monthStart = epochOf(2026, Calendar.FEBRUARY, 1)
+        val monthEnd = epochOf(2026, Calendar.FEBRUARY, 28)
+        val records = listOf(
+            RecordEntity(itemId = 1, type = "Pagamento", title = "A",
+                dateEpochMs = epochOf(2026, Calendar.FEBRUARY, 10), amountCents = 1000L),
+            RecordEntity(itemId = 2, type = "Pagamento", title = "B",
+                dateEpochMs = epochOf(2026, Calendar.JANUARY, 20), amountCents = 5000L)
+        )
+        val appointments = listOf(
+            AppointmentEntity(itemId = 1, title = "Seduta", dateEpochMs = epochOf(2026, Calendar.FEBRUARY, 15),
+                amountCents = 2000L, isDone = true, isPaid = true),
+            // Effettuato questo mese ma non ancora pagato: non deve contare come speso
+            AppointmentEntity(itemId = 1, title = "Seduta 2", dateEpochMs = epochOf(2026, Calendar.FEBRUARY, 20),
+                amountCents = 3000L, isDone = true, isPaid = false)
+        )
+
+        val stats = computeHomeDashboardStats(records, appointments, emptyList(), monthStart, monthEnd)
+
+        assertEquals(3000L, stats.spentThisMonthCents) // 1000 (record di febbraio) + 2000 (seduta pagata)
+    }
+
+    @Test
+    fun `home dashboard estimates upcoming spend from deadlines' last known cost`() {
+        val upcoming = listOf(
+            DeadlineEntity(itemId = 1, category = "Bollo", dueDateEpochMs = 0L, lastCostCents = 15000L),
+            DeadlineEntity(itemId = 2, category = "Assicurazione", dueDateEpochMs = 0L, lastCostCents = null)
+        )
+
+        val stats = computeHomeDashboardStats(emptyList(), emptyList(), upcoming, 0L, 0L)
+
+        assertEquals(15000L, stats.upcomingEstimatedCents)
+        assertEquals(0L, stats.spentThisMonthCents)
     }
 }

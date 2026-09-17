@@ -12,6 +12,7 @@ import com.example.rimembranze.data.db.AppointmentEntity
 import com.example.rimembranze.data.db.DeadlineEntity
 import com.example.rimembranze.data.db.ItemEntity
 import com.example.rimembranze.data.db.ItemType
+import com.example.rimembranze.data.db.RecordEntity
 import com.example.rimembranze.data.repository.ItemRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -23,9 +24,10 @@ import kotlinx.coroutines.launch
 
 data class ItemsUiState(
     val items: List<ItemEntity> = emptyList(),
-    // Snapshot completo di scadenze/appuntamenti di tutti gli item, usato solo per la ricerca
+    // Snapshot completo di scadenze/appuntamenti di tutti gli item, usato per ricerca e riepilogo home
     val deadlines: List<DeadlineEntity> = emptyList(),
-    val appointments: List<AppointmentEntity> = emptyList()
+    val appointments: List<AppointmentEntity> = emptyList(),
+    val records: List<RecordEntity> = emptyList()
 )
 
 class ItemsViewModel(app: Application) : AndroidViewModel(app) {
@@ -37,9 +39,10 @@ class ItemsViewModel(app: Application) : AndroidViewModel(app) {
     val uiState: StateFlow<ItemsUiState> = combine(
         repo.observeItems(),
         db.deadlineDao().observeAll(),
-        db.appointmentDao().observeAll()
-    ) { items, deadlines, appointments ->
-        ItemsUiState(items = items, deadlines = deadlines, appointments = appointments)
+        db.appointmentDao().observeAll(),
+        db.recordDao().observeAll()
+    ) { items, deadlines, appointments, records ->
+        ItemsUiState(items = items, deadlines = deadlines, appointments = appointments, records = records)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
