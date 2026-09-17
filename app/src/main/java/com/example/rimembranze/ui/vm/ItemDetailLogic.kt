@@ -1,6 +1,7 @@
 package com.example.rimembranze.ui.vm
 
 import com.example.rimembranze.data.db.AppointmentEntity
+import com.example.rimembranze.data.db.DeadlineEntity
 import com.example.rimembranze.data.db.RecordEntity
 import java.util.Calendar
 
@@ -39,6 +40,51 @@ fun currentYearStartEpochMs(now: Long = System.currentTimeMillis()): Long =
         timeInMillis = now
         set(Calendar.DAY_OF_YEAR, 1); set(Calendar.HOUR_OF_DAY, 0)
         set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+    }.timeInMillis
+
+data class HomeDashboardStats(
+    val spentThisMonthCents: Long,
+    val upcomingEstimatedCents: Long
+)
+
+/**
+ * Riepilogo a livello di app per la card in home: stesso principio di [computeItemStats]
+ * (dati puri in ingresso/uscita, niente Room) ma aggregato su tutti gli item invece che uno solo.
+ */
+fun computeHomeDashboardStats(
+    records: List<RecordEntity>,
+    appointments: List<AppointmentEntity>,
+    upcomingDeadlines: List<DeadlineEntity>,
+    monthStartEpochMs: Long,
+    monthEndEpochMs: Long
+): HomeDashboardStats {
+    val spentThisMonth = records
+        .filter { it.dateEpochMs in monthStartEpochMs..monthEndEpochMs }
+        .sumOf { it.amountCents ?: 0L } +
+        appointments
+            .filter { it.isPaid && it.dateEpochMs in monthStartEpochMs..monthEndEpochMs }
+            .sumOf { it.amountCents ?: 0L }
+
+    val upcomingEstimated = upcomingDeadlines.sumOf { it.lastCostCents ?: 0L }
+
+    return HomeDashboardStats(spentThisMonth, upcomingEstimated)
+}
+
+/** Mezzanotte del primo giorno del mese corrente. */
+fun currentMonthStartEpochMs(now: Long = System.currentTimeMillis()): Long =
+    Calendar.getInstance().apply {
+        timeInMillis = now
+        set(Calendar.DAY_OF_MONTH, 1); set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+    }.timeInMillis
+
+/** Ultimo istante (23:59:59.999) dell'ultimo giorno del mese corrente. */
+fun currentMonthEndEpochMs(now: Long = System.currentTimeMillis()): Long =
+    Calendar.getInstance().apply {
+        timeInMillis = now
+        set(Calendar.DAY_OF_MONTH, getActualMaximum(Calendar.DAY_OF_MONTH))
+        set(Calendar.HOUR_OF_DAY, 23); set(Calendar.MINUTE, 59)
+        set(Calendar.SECOND, 59); set(Calendar.MILLISECOND, 999)
     }.timeInMillis
 
 /**

@@ -18,12 +18,13 @@ lives in an on-device database — there is no account, no backend, and no netwo
 - **Payment records** — a running history of payments/visits per item, including optional
   insurance-reimbursement tracking (status: pending/approved/rejected). Bulk multi-select delete
   is available for cleaning up old history.
-- **Stats** — per-item spend this year, total spend, session count, and average session cost.
+- **Stats** — per-item spend this year, total spend, session count, and average session cost. The
+  main list also shows a home-level summary card (amount spent this month and estimated spend from
+  deadlines due in the next 30 days) across all items.
 - **Search** — the main list's search matches item name/notes as well as deadline categories and
   appointment titles.
 - **Reminders** — local notifications scheduled with WorkManager, surviving app restarts, with
-  tap-to-open deep links back into the relevant item/appointment. A weekly background check also
-  flags appointments completed but still unbilled for more than a week.
+  tap-to-open deep links back into the relevant item/appointment.
 - **CSV export** — export an item's full payment/appointment history to a CSV file via the
   system's document picker.
 - **Full backup/restore** — export everything (items, deadlines, records, appointments) to a
