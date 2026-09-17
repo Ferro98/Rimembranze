@@ -35,11 +35,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.rimembranze.R
 import com.example.rimembranze.data.db.ItemType
 import com.example.rimembranze.ui.components.AccentAmber
-import com.example.rimembranze.ui.components.AccentBlue
 import com.example.rimembranze.ui.components.BackgroundDark
 import com.example.rimembranze.ui.components.DestructiveRed
 import com.example.rimembranze.ui.components.DestructiveRed as AccentRed
 import com.example.rimembranze.ui.components.DividerColor
+import com.example.rimembranze.ui.components.HomeSummaryCard
 import com.example.rimembranze.ui.components.SurfaceDark
 import com.example.rimembranze.ui.components.SurfaceElevated
 import com.example.rimembranze.ui.components.TextPrimary
@@ -637,47 +637,6 @@ private fun MainList(
                 ) { Text(stringResource(R.string.action_cancel)) }
             }
         )
-    }
-}
-
-// ── HomeSummaryCard — riepilogo spesa/stime su tutti gli item ─────────────────
-@Composable
-private fun HomeSummaryCard(stats: HomeDashboardStats, modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier.clip(RoundedCornerShape(16.dp)).background(SurfaceDark)
-            .padding(horizontal = 12.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        if (stats.spentThisMonthCents > 0L) {
-            HomeStatChip(
-                label = stringResource(R.string.main_dashboard_spent_this_month),
-                value = "€${"%.0f".format(stats.spentThisMonthCents / 100.0)}",
-                color = AccentAmber,
-                modifier = Modifier.weight(1f)
-            )
-        }
-        if (stats.upcomingEstimatedCents > 0L) {
-            HomeStatChip(
-                label = stringResource(R.string.main_dashboard_upcoming_estimate),
-                value = "€${"%.0f".format(stats.upcomingEstimatedCents / 100.0)}",
-                color = AccentBlue,
-                modifier = Modifier.weight(1f)
-            )
-        }
-    }
-}
-
-@Composable
-private fun HomeStatChip(label: String, value: String, color: Color, modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(10.dp))
-            .background(color.copy(alpha = 0.10f))
-            .padding(horizontal = 10.dp, vertical = 8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(value, color = color, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-        Text(label, color = color.copy(alpha = 0.7f), fontSize = 10.sp, fontWeight = FontWeight.Medium)
     }
 }
 
